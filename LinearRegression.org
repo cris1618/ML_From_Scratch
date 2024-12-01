@@ -18,12 +18,14 @@ to find the partial derivatives with respect to =m= and =b=.
 
 This will allow us to change the two parameters using these updating formulas:
 
-m = m - L * (∂E/∂m)   
-b = b - L * (∂E/∂b)  
+m = m - L * (∂E/∂m) 
+        
+b = b - L * (∂E/∂b)     
 
 Where: 
 
 ∂E/∂m = (-2/n) * Σ x_i * (y_i - (mx + b))    
+
 ∂E/∂b = (-2/n) * Σ (y_i - (mx + b))
 
 and =L= represents the learning rate, which determines the size of the 
