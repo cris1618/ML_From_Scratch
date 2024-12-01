@@ -11,10 +11,10 @@ The goal is to minimize the error function,
 the error function is defined as:
 
 \[
-$$
 E = \frac{1}{n} \sum (y_i - (mx + b))^2
-$$
 \]
+
+E = (1/n) * Σ (y_i - (mx + b))^2
 
 We want to find the values that minimize =E=. To do that, we can 
 tweak the parameters =m= and =b= to minimize =E=. Therefore, we need 
@@ -25,11 +25,28 @@ This will allow us to change the two parameters using these updating formulas:
 \[
 m = m - L \cdot \frac{\partial E}{\partial m}
 \]
+m = m - L * (∂E/∂m)  
+b = b - L * (∂E/∂b)
 \[
 b = b - L \cdot \frac{\partial E}{\partial b}
 \]
 
-Now let's see the code!
+Where: 
+
+\[
+\frac{\partial E}{\partial m} = \frac{-2}{n} \sum x_i(y_i - (mx +b))
+\]
+∂E/∂m = (-2/n) * Σ x_i * (y_i - (mx + b))  
+∂E/∂b = (-2/n) * Σ (y_i - (mx + b))
+\[
+\frac{\partial E}{\partial b} = \frac{-2}{n} \sum (y_i - (mx + b))
+\]
+
+and =L= represents the learning rate, which determines the size of the 
+steps the model takes to minimize the target function (=E=) and reach its 
+optimal value.
+
+Now Let's see the code!
 #+name: lg
 #+begin_src  python :python python3
   import matplotlib.pyplot as plt
