@@ -4,14 +4,30 @@
 #+property: header-args:python :python python3 :session *Python* :results output :exports both :noweb yes :tangle yes:
 
 * Introduction
-In this Notebook I'll implement a Linear Regression
-Alghoritm from scratch using Pyhton (No libraries).
+In this notebook, I will implement a Linear Regression algorithm 
+from scratch using Python, without relying on any external libraries.
 * Code
-Minimize the error function
-Error function E = 1/n * sum(yi-(mx+b))^2 (Mean Squared Error).
-We want to find the values that minimize E. To do that we can
-tweak the parameters =m= and =b= to minimize E. Therefore, we need
+The goal is to minimize the error function,
+the error function is defined as:
+
+\[
+E = \frac{1}{n} \sum (y_i - (mx + b))^2
+\]
+
+We want to find the values that minimize =E=. To do that, we can 
+tweak the parameters =m= and =b= to minimize =E=. Therefore, we need 
 to find the partial derivatives with respect to =m= and =b=.
+
+This will allow us to change the two parameters using these updating formulas:
+
+\[
+m = m - L \cdot \frac{\partial E}{\partial m}
+\]
+\[
+b = b - L \cdot \frac{\partial E}{\partial b}
+\]
+
+Now let's see the code!
 #+name: lg
 #+begin_src  python :python python3
   import matplotlib.pyplot as plt
@@ -19,43 +35,89 @@ to find the partial derivatives with respect to =m= and =b=.
   import random
 
   num_rows = 100 
+  # Creating random data 
   grades = [random.randint(1,100) for _ in range(num_rows)]
   time = [random.randint(1,100) for _ in range(num_rows)]
 
-  data = {"Grades":grades, "Studytime": time}
+  data = {"grades":grades, "studytime": time}
   df = pd.DataFrame(data)
 
-  # Define the Loss function
+  # Define the Loss function (Not used, only for learning purposes)
   def loss_function(m, b, points):
       total_error = 0
       for i in range(len(points)):
           x = points.iloc[i].studytime
           y = points.iloc[i].grades
           total_error += (y - (m*x +b))**2 
-      total_error / float(len(points))
+      return total_error / float(len(points))
 
-  def 
+  # Define the Gradient Descent
+  def gradient_descent(m_now, b_now, points, L):
+      m_grad = 0
+      b_grad = 0
+      
+      n = len(points)
+      # Using the partial derivatives that we already found
+      for i in range(n):
+          x = points.iloc[i].studytime
+          y = points.iloc[i].grades
+          m_grad += -(2/n)*(x)*(y - (m_now*x+b_now))
+          b_grad += -(2/n)*(y - (m_now*x+b_now))
+          
+      m = m_now - m_grad*L
+      b = b_now - b_grad*L
+      return m, b
+  
+  # Apply the Linear Regresion
+  m = 0
+  b = 0
+  L = 0.0001
+  epochs = 1000
+  
+  for i in range(epochs):
+      if i % 100 == 0:
+         print(f"Epoch: {i}")
+      m, b = gradient_descent(m, b, df, L)
+  
+  print(m,b)
   #+end_src
 
 #+RESULTS: lg
+#+begin_example
+Python 3.10.12 (main, Nov  6 2024, 20:22:13) [GCC 11.4.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+Epoch: 0
+Epoch: 1000
+Epoch: 2000
+Epoch: 3000
+Epoch: 4000
+Epoch: 5000
+Epoch: 6000
+Epoch: 7000
+Epoch: 8000
+Epoch: 9000
+0.4350440650097158 22.32537170513932
+#+end_example
 
-
+Visualize the result with the parameters =m= and =b= learned by the model.
 #+name: Viz
-#+begin_src  python :file lg.png :python python3 :session *Python* :results output graphics file
+#+begin_src python :file lgs.png :python python3 :session *Python* :results output graphics file 
 <<lg>> 
- fig, ax = plt.subplots(1,1,figsize=(10,8))
-  ax.scatter(df["Grades"], df["Time Spent"])
-  ax.set_xlabel("Grades")
-  ax.set_ylabel("Time Spent")
-  ax.set_title("Correlation between Grades and Time Spent")
-  ax.grid()
-  ax.spines["top"].set_visible(False)
-  ax.spines["right"].set_visible(False)
+fig, ax = plt.subplots(1,1,figsize=(10,8))
+ax.scatter(df["grades"], df["studytime"], color = "black")
+ax.plot(df["studytime"], [m * x + b for x in df["studytime"]], color="red")
+ax.set_xlabel("Grades")
+ax.set_ylabel("Time Spent")
+ax.set_title("Correlation between Grades and Time Spent")
+ax.grid()
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
   
-  plt.tight_layout()
-  plt.savefig("lg.png")
-  plt.show()
+plt.tight_layout()
+plt.savefig("lgs.png")
+plt.show()
 #+end_src
 
 #+RESULTS: Viz
-[[file:lg.png]]
+[[file:lgs.png]]
+
