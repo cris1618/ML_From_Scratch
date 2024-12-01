@@ -11,7 +11,9 @@ The goal is to minimize the error function,
 the error function is defined as:
 
 \[
+$$
 E = \frac{1}{n} \sum (y_i - (mx + b))^2
+$$
 \]
 
 We want to find the values that minimize =E=. To do that, we can 
