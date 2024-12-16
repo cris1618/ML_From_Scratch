@@ -4,7 +4,50 @@
 #+property: header-args:python :python python3 :session *Python* :results output :exports both :noweb yes :tangle yes:
 
 * Introduction
+In this notebook, I will implement a Logistic Regression algorithm 
+from scratch using Python and C, without relying on any external libraries.
 * Code
+In Logistic Regression, instead of minimizing an error function (as in Linear Regression), we aim to =maximize the log-likelihood function=, which serves as the "error function" in this case.
+
+The =Log-Likelihood function= is defined as:
+
+𝐿(𝜃) = ∑[𝑦𝑖 ⋅ log(ℎ𝜃(𝑥𝑖)) + (1 − 𝑦𝑖) ⋅ log(1 − ℎ𝜃(𝑥𝑖))]
+Where:
+
+=h_\theta(x_i)= is the sigmoid function, defined as:
+
+ℎ𝜃(𝑥𝑖) = 1 / 1 + exp(𝜃 ⋅𝑥𝑖 + 𝑏)
+ 
+It represents the predicted probability that =y_i= equals 1, 
+and its output is always between 0 and 1.
+
+=\theta= represents the parameters (weights) of the model that we want to optimize.
+
+=b= is the bias term (intercept).
+
+=y_i= is the target value (0 or 1) for observation =i=.
+
+=x_i= is the input feature for observation =i=.
+
+=Objective:=
+To find the optimal values of =\theta= and =b= that =maximize= the log-likelihood function =L(\theta)=.
+
+=Updating Parameters:=
+To maximize =L(\theta)=, we perform =gradient ascent= by updating =\theta= and =b= iteratively 
+using their partial derivatives with respect to =L(\theta)=:
+
+𝜃 = 𝜃 + lr ⋅ ∂𝐿/∂𝜃 
+𝑏 = 𝑏 + lr ⋅ ∂𝐿/∂𝑏 
+Where:
+=lr= is the =learning rate=, which determines the size of the steps taken to optimize the parameters.
+
+Key Points:
+=Gradient Ascent=: Since we are =maximizing= =L(\theta)=, we use gradient ascent instead of gradient descent.
+=Sigmoid Function=: The prediction =h_\theta(x_i)= is derived using the sigmoid function, which 
+ensures the output is a probability between 0 and 1.
+=Partial Derivatives=: The gradient of the log-likelihood function with respect to =\theta= and =b= is used to update the parameters.
+
+Let’s Code!
 ** Python Code
 #+name: LogReg
 #+begin_src python :python python3
