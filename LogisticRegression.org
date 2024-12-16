@@ -1,0 +1,167 @@
+#+TITLE: Logistic regression from Scratch 
+#+AUTHOR: Cristian Del Gobbo (pledged)
+#+STARTUP: overview hideblocks indent
+#+property: header-args:python :python python3 :session *Python* :results output :exports both :noweb yes :tangle yes:
+
+* Introduction
+* Code
+** Python Code
+#+name: LogReg
+#+begin_src python :python python3
+import numpy as np
+import pandas as pd
+import random
+
+# Number of rows
+num_rows = 100
+
+# Create random dataset
+studytime = [random.randint(0, 20) for _ in range(num_rows)]
+passed = [random.randint(0, 1) for _ in range(num_rows)]
+
+data = {"StudyTime": studytime, "Passed": passed}
+df = pd.DataFrame(data)
+
+# Define the sigmoid function
+def sigmoid(theta, bias, x):
+    return 1 / (1 + np.exp(-theta * x + bias))
+
+# Define the loss function
+def loss_function(theta, bias, df):
+    total_error = 0
+    for i in range(len(df)):
+        x = df.iloc[i].StudyTime
+        y = df.iloc[i].Passed
+        prediction = sigmoid(theta, bias, x)
+        # Use the log likelihood function
+        total_error += (y * np.log(prediction)) + (1 - y) * (np.log(1 - prediction))
+    return total_error / float(len(df))
+
+def gradient_ascent(theta_now, bias_now, df, lr):
+    theta_grad = 0
+    bias_grad = 0
+    n = len(df)
+
+    for i in range(n):
+        x = df.iloc[i].StudyTime
+        y = df.iloc[i].Passed
+        prediction = sigmoid(theta_now, bias_now, x)
+        # Partial derivative with respect to theta and bias of the loss function
+        theta_grad += (y - prediction) * x
+        bias_grad += (y - prediction)
+
+    theta = theta_now + lr * theta_grad
+    bias = bias_now + lr * bias_grad 
+
+    return theta, bias
+
+# Apply logistic regression
+theta = random.uniform(-0.1, 0.1)
+bias = random.uniform(-0.1, 0.1)
+lr = 0.001
+epochs = 1000
+
+for i in range(epochs):
+    if i % 100 == 0:
+        print(f"Epoch: {i}, Loss: {loss_function(theta, bias, df)}")
+    theta, bias = gradient_ascent(theta, bias, df, lr)
+
+print(theta, bias)
+#+end_src
+
+#+RESULTS: LogReg
+#+begin_example
+Epoch: 0, Loss: -0.7475542163857954
+Epoch: 100, Loss: -0.8603416360538305
+Epoch: 200, Loss: -0.8967501480280253
+Epoch: 300, Loss: -1.0221748610733736
+Epoch: 400, Loss: -1.3577426214399457
+Epoch: 500, Loss: -1.9303468703604245
+Epoch: 600, Loss: -2.578550395197063
+Epoch: 700, Loss: -3.2602569268824624
+Epoch: 800, Loss: -3.958034044550183
+Epoch: 900, Loss: -4.6643067931827025
+1.587135212309692 19.93680492249381
+#+end_example
+
+** C Code
+#+begin_src C :tangle LogReg.c :results output
+  // Include libraries
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <math.h>
+  #include <time.h>
+
+  // Define the size
+  #define SIZE 100
+
+  // Function prototype
+  float sigmoid(float theta, float bias, int x);
+  float loss_function(float theta, float bias, int* studytime, int* passed, int size);
+  void gradient_ascent(float* theta, float* bias, int* studytime, int* passed, int size, float lr);
+
+  int main(){
+    int studytime[SIZE];
+    int passed[SIZE];
+    float lr = 0.001f;
+    float theta = 0.f;
+    float bias = 0.f;
+    int num_epochs = 1000;
+
+    srand(time(NULL));
+    for(int i = 0; i<SIZE; i++){
+      studytime[i] = (rand() % 21);
+      passed[i] = (rand() % 2);
+    }
+
+    for(int epoch = 0; epoch<num_epochs; epoch++){
+      gradient_ascent(&theta, &bias, studytime, passed, SIZE, lr);
+      if((epoch % 100) == 0)
+        printf("Epoch: %d\tLoss: %.5g\n", epoch, loss_function(theta, bias, studytime, passed, SIZE));
+    } 
+    puts("");
+
+    printf("Learned Parameters: \ntheta = %.5g\tbias = %.5g\n", theta, bias);
+    
+    return 0;
+  }
+
+  float sigmoid(float theta, float bias, int x){
+    double parameter = (-theta * x) + bias;
+    return 1 / (1 + exp(parameter));
+  }
+
+  float loss_function(float theta, float bias, int* studytime, int* passed, int size){
+    float total_loss = 0;
+    int x, y;
+
+    for(int i = 0; i<size; i++){
+      x = studytime[i];
+      y = passed[i];
+      float prediction = sigmoid(theta, x, bias);
+      total_loss += y*log(prediction) + (1 - y)*(log(1 - prediction));
+    }
+    return total_loss/size;
+  }
+
+  void gradient_ascent(float* theta, float* bias, int* studytime, int* passed, int size, float lr){
+    float theta_grad = 0.f;
+    float bias_grad = 0.f;
+    int x, y;
+
+    for(int i = 0; i<size; i++){
+      x = studytime[i];
+      y = passed[i];
+      float prediction = sigmoid(*theta, *bias, x);
+      theta_grad += (y - prediction) * x;
+      bias_grad += (y - prediction);
+    } 
+    ,*theta += theta_grad * lr;
+    ,*bias += bias_grad * lr;
+  }
+
+
+
+#+end_src
+
+#+RESULTS:
