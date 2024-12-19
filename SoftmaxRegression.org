@@ -1,0 +1,261 @@
+#+TITLE: Softmax Regression from Scratch 
+#+AUTHOR: Cristian Del Gobbo (pledged)
+#+STARTUP: overview hideblocks indent
+#+property: header-args:python :python python3 :session *Python* :results output :exports both :noweb yes :tangle yes:
+
+* Introduction
+In this notebook, I will implement a Softmax Regression algorithm 
+from scratch using Python and C, without relying on any external libraries.
+* Code
+** Python Code
+Step 1: Creating the data.
+#+name: Data
+#+begin_src python :python python3 :results output
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Set random seed
+np.random.seed(1618)
+
+# Dataset properties
+num_rows = 100
+num_features = 4
+num_classes = 3
+
+# Create data points from distinct Gaussian distributions for each class
+means = [
+   [2, 2, 2, 2],
+   [6, 6, 6, 6],
+   [10, 10, 10, 10]
+]
+cov = np.eye(num_features) # Identity matrix as covariance (indipendent features)
+
+X = []
+y = []
+
+# Generate 100 examples distributed across the 3 classes
+examples_per_class = num_rows // num_classes
+
+for class_label, mean in enumerate(means):
+    class_data = np.random.multivariate_normal(mean, cov, examples_per_class)
+    X.append(class_data)
+    y.extend([class_label] * examples_per_class)
+
+# Combine all features into a single array
+X = np.vstack(X)
+y = np.array(y)
+
+# One-Hot Encode the Labels
+def one_hot_encode(labels, num_classes):
+    one_hot = np.zeros((labels.size, num_classes))
+    one_hot[np.arange(labels.size), labels] = 1
+    return one_hot
+
+y_one_hot = one_hot_encode(y, num_classes)
+
+# Include feature columns and the target class label
+columns = [f"Feture_{i+1}" for i in range(num_features)] + ["Class"]
+data = np.hstack((X, y.reshape(-1,1)))
+df = pd.DataFrame(data, columns=columns)
+#print(df.head())
+#+end_src
+
+#+RESULTS: Data
+:    Feture_1  Feture_2  Feture_3  Feture_4  Class
+: 0  0.419980  2.835402  2.635347  1.179549    0.0
+: 1  1.601603  1.964513  3.864144  1.512772    0.0
+: 2  2.423905  1.488458  2.111663  1.122973    0.0
+: 3  1.866911  0.848720  0.983183  3.816334    0.0
+: 4  1.966817  2.513222  3.587602  0.704391    0.0
+
+Visualizing the data to have an idea of the dataset' composition
+#+name: viz_data
+#+begin_src python :file softmax.png :python python3 :session *Python* :results output graphics file
+<<Data>>
+fig, ax = plt.subplots(1,1,figsize=(8,6))
+for class_label in range(num_classes):
+    ax.scatter(
+        X[y == class_label, 0],  # Feature 1
+        X[y == class_label, 1],  # Feature 2
+        label=f"Class {class_label}" 
+    )
+
+ax.set_title("Scatter Plot of First Two Features")
+ax.set_xlabel("Feature 1")
+ax.set_ylabel("Feature 2")
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+
+
+plt.legend()
+plt.grid()
+plt.savefig("softmax.png")
+plt.show()
+#+end_src
+
+#+RESULTS: viz_data
+[[file:softmax.png]]
+
+Step 2: Implement Softmax Function, Cross-entropy Loss and Gradient Descent
+#+name: functions
+#+begin_src python :python python3 :results output
+<<Data>>
+# Softmax function
+def softmax(theta, bias, X):
+    z = np.dot(X, theta.T) + bias #Shape: (num_samples, num_classes)
+
+    exp_z = np.exp(z - np.max(z, axis=1, keepdims=True)) # Subtract max for numerical stability
+    softmax_probs = exp_z / np.sum(exp_z, axis=1, keepdims=True)
+
+    return softmax_probs
+
+# Define the loss function
+def loss_function(theta, bias, X, Y):
+    softmax_probs = softmax(theta, bias, X)
+    
+    #Compute the cross entropy loss
+    log_probs = np.log(softmax_probs)
+    loss = -np.sum(Y * log_probs) / X.shape[0]
+    
+    return loss
+
+# Gradient Descent function 
+def gradient_descent(theta, bias, X, Y, lr):
+    softmax_probs = softmax(theta, bias, X)
+    theta_grad = np.dot((softmax_probs - Y).T, X) / X.shape[0]
+    bias_grad = np.sum(softmax_probs - Y, axis=0) / X.shape[0]
+    
+    # Update the parameters
+    theta = theta - lr * theta_grad
+    bias = bias - lr * bias_grad
+    
+    return theta, bias
+#+end_src
+
+#+RESULTS: functions
+
+Step 3: Training 
+#+begin_src python :python python3 :results output 
+<<functions>>
+theta = np.random.rand(num_classes, num_features)
+bias = np.random.rand(num_classes)
+lr = 0.01
+num_epochs = 10000
+
+for i in range(num_epochs):
+    if i % 100 == 0:
+        print(f"Epoch: {i}, Loss: {loss_function(theta, bias, X, y_one_hot)}")
+    theta, bias = gradient_descent(theta, bias, X, y_one_hot, lr)
+
+print(theta, bias)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Epoch: 0, Loss: 1.4383780594596607
+Epoch: 100, Loss: 0.8158518365100906
+Epoch: 200, Loss: 0.7627475309895695
+Epoch: 300, Loss: 0.7205126427693952
+Epoch: 400, Loss: 0.6854163643107807
+Epoch: 500, Loss: 0.6553837583416365
+Epoch: 600, Loss: 0.629166420132039
+Epoch: 700, Loss: 0.6059504421192808
+Epoch: 800, Loss: 0.5851678883761177
+Epoch: 900, Loss: 0.5664012092333598
+Epoch: 1000, Loss: 0.549331382646852
+Epoch: 1100, Loss: 0.5337077150621502
+Epoch: 1200, Loss: 0.5193290486328835
+Epoch: 1300, Loss: 0.5060313720541119
+Epoch: 1400, Loss: 0.4936792551554217
+Epoch: 1500, Loss: 0.48215969808879683
+Epoch: 1600, Loss: 0.4713775807293794
+Epoch: 1700, Loss: 0.4612522161626732
+Epoch: 1800, Loss: 0.45171469138455955
+Epoch: 1900, Loss: 0.4427057843652897
+Epoch: 2000, Loss: 0.4341743122352627
+Epoch: 2100, Loss: 0.4260758076197712
+Epoch: 2200, Loss: 0.4183714483604114
+Epoch: 2300, Loss: 0.41102718526566706
+Epoch: 2400, Loss: 0.40401302622657176
+Epoch: 2500, Loss: 0.3973024449065757
+Epoch: 2600, Loss: 0.3908718894637273
+Epoch: 2700, Loss: 0.38470037216771347
+Epoch: 2800, Loss: 0.37876912485652864
+Epoch: 2900, Loss: 0.3730613082959608
+Epoch: 3000, Loss: 0.3675617659106922
+Epoch: 3100, Loss: 0.3622568142277055
+Epoch: 3200, Loss: 0.3571340638405527
+Epoch: 3300, Loss: 0.35218226586216067
+Epoch: 3400, Loss: 0.3473911797549953
+Epoch: 3500, Loss: 0.34275145916375915
+Epoch: 3600, Loss: 0.33825455296765244
+Epoch: 3700, Loss: 0.333892619247353
+Epoch: 3800, Loss: 0.32965845024999807
+Epoch: 3900, Loss: 0.32554540675196564
+Epoch: 4000, Loss: 0.3215473604784451
+Epoch: 4100, Loss: 0.31765864345196837
+Epoch: 4200, Loss: 0.3138740033180574
+Epoch: 4300, Loss: 0.3101885638419918
+Epoch: 4400, Loss: 0.3065977898920149
+Epoch: 4500, Loss: 0.30309745632554597
+Epoch: 4600, Loss: 0.2996836202797567
+Epoch: 4700, Loss: 0.2963525964391148
+Epoch: 4800, Loss: 0.2931009349125389
+Epoch: 4900, Loss: 0.28992540140356454
+Epoch: 5000, Loss: 0.2868229593999599
+Epoch: 5100, Loss: 0.2837907541458122
+Epoch: 5200, Loss: 0.28082609819030596
+Epoch: 5300, Loss: 0.27792645833407875
+Epoch: 5400, Loss: 0.275089443816889
+Epoch: 5500, Loss: 0.27231279560997423
+Epoch: 5600, Loss: 0.2695943766933802
+Epoch: 5700, Loss: 0.26693216321314456
+Epoch: 5800, Loss: 0.264324236425847
+Epoch: 5900, Loss: 0.2617687753489963
+Epoch: 6000, Loss: 0.25926405004523234
+Epoch: 6100, Loss: 0.2568084154766236
+Epoch: 6200, Loss: 0.2544003058725607
+Epoch: 6300, Loss: 0.2520382295610816
+Epoch: 6400, Loss: 0.24972076421899303
+Epoch: 6500, Loss: 0.24744655250102404
+Epoch: 6600, Loss: 0.2452142980125181
+Epoch: 6700, Loss: 0.24302276159393227
+Epoch: 6800, Loss: 0.24087075788873963
+Epoch: 6900, Loss: 0.23875715216926577
+Epoch: 7000, Loss: 0.23668085739758501
+Epoch: 7100, Loss: 0.2346408315009125
+Epoch: 7200, Loss: 0.23263607484296994
+Epoch: 7300, Loss: 0.23066562787462686
+Epoch: 7400, Loss: 0.2287285689487348
+Epoch: 7500, Loss: 0.22682401228552782
+Epoch: 7600, Loss: 0.22495110607624
+Epoch: 7700, Loss: 0.2231090307137612
+Epoch: 7800, Loss: 0.22129699714017637
+Epoch: 7900, Loss: 0.21951424530196517
+Epoch: 8000, Loss: 0.2177600427044767
+Epoch: 8100, Loss: 0.21603368305803336
+Epoch: 8200, Loss: 0.2143344850087054
+Epoch: 8300, Loss: 0.21266179094739257
+Epoch: 8400, Loss: 0.2110149658914109
+Epoch: 8500, Loss: 0.20939339643326688
+Epoch: 8600, Loss: 0.20779648975175882
+Epoch: 8700, Loss: 0.20622367268094607
+Epoch: 8800, Loss: 0.2046743908328962
+Epoch: 8900, Loss: 0.2031481077704544
+Epoch: 9000, Loss: 0.20164430422658342
+Epoch: 9100, Loss: 0.20016247736709775
+Epoch: 9200, Loss: 0.19870214009386514
+Epoch: 9300, Loss: 0.19726282038578047
+Epoch: 9400, Loss: 0.1958440606750243
+Epoch: 9500, Loss: 0.19444541725630787
+Epoch: 9600, Loss: 0.19306645972698167
+Epoch: 9700, Loss: 0.19170677045604356
+Epoch: 9800, Loss: 0.1903659440802298
+Epoch: 9900, Loss: 0.1890435870254994
+[[ 0.04779577 -0.08474396 -0.09984036 -0.07386147]
+ [ 0.1807486   0.14857998  0.41066845  0.36575956]
+ [ 0.54954818  0.57565603  0.54549412  0.19631824]] [ 5.42783112  0.77522759 -4.99820586]
+#+end_example
+
+** C Code
