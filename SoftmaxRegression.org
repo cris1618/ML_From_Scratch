@@ -62,7 +62,7 @@ df = pd.DataFrame(data, columns=columns)
 #+end_src
 
 #+RESULTS: Data
-:    Feture_1  Feture_2  Feture_3  Feture_4  Class
+: Feture_1  Feture_2  Feture_3  Feture_4  Class
 : 0  0.419980  2.835402  2.635347  1.179549    0.0
 : 1  1.601603  1.964513  3.864144  1.512772    0.0
 : 2  2.423905  1.488458  2.111663  1.122973    0.0
@@ -97,7 +97,7 @@ plt.show()
 #+RESULTS: viz_data
 [[file:softmax.png]]
 
-Step 2: Implement Softmax Function, Cross-entropy Loss and Gradient Descent
+Step 2: Implement Softmax Function, Cross-entropy Loss and Gradient Descent.
 #+name: functions
 #+begin_src python :python python3 :results output
 <<Data>>
@@ -259,3 +259,352 @@ Epoch: 9900, Loss: 0.1890435870254994
 #+end_example
 
 ** C Code
+Now let's recreate the same softmax algorithm in C,
+following the same steps as the Python implementation.
+
+Functions definition to generate data.
+#+name: funCs_data
+#+begin_src C :results none :noweb yes :includes <stdio.h> <math.h> 
+  // Include libraries 
+  #include <stdlib.h>
+  #include <time.h>
+
+  // Name: eye
+  // Purpose: Create an identity matrix.
+  // Return: void
+  // Arguments: Number of features and 2D array.
+  // Notes: Replication of NumPy "np.eye" function.
+  void eye(int num_features, int arr[][num_features]){
+    for(int i = 0; i<num_features; i++){
+      for(int j = 0; j<num_features; j++){
+        arr[i][j] = (i == j) ? 1 : 0;
+      }
+    }
+  }
+
+  // Name: generate_data
+  // Purpose: Create gaussian distributed data
+  // Return: void
+  // Arguments: Number of rows, Number of features
+  // Number of classes, Features array X and target y
+  void generate_data(int num_rows, int num_features, int num_classes, int X[][num_features], int y[]){
+    int examples_per_class = num_rows / num_classes;
+
+    // Further generalizible, example purpose
+    // Mean for each class
+    int means[3][4] = {
+      {2, 2, 2, 2},
+      {6, 6, 6, 6},
+      {10, 10, 10, 10}
+    };
+
+    // seed random generator
+    srand(time(0));
+
+    // Generate the data
+    for(int class_label = 0; class_label < num_classes; class_label++){
+      for(int i = 0; i<examples_per_class; i++){
+        int index = class_label * examples_per_class + i;
+        for(int j = 0; j<num_features; j++){
+          // Generate random data around the mean (Gaussian)
+          X[index][j] = means[class_label][j] + (rand() % 3 - 1);
+        }
+        y[index] = class_label;
+      }
+    }
+  }
+
+  // Name: one_hot_encode
+  // Purpose: Create one hot encoded target array
+  // Return: void
+  // Arguments: Target array y, Number of rows, 
+  // Number of classes, Target one hot encoded empty array;
+  void one_hot_encode(int y[], int num_rows, int num_classes, int y_one_hot[][num_classes]){
+    for(int i = 0; i<num_rows; i++){
+      for(int j = 0; j<num_classes; j++){
+        y_one_hot[i][j] = (y[i] == j) ? 1 : 0;
+      }
+    }
+  }
+#+end_src
+
+Define helper functions for operation with matrices and functions (softmax in this case) computation.
+#+name: funC_help
+#+begin_src C :results none :noweb yes :includes <stdio.h> <math.h>
+  // Name: dot_product
+  // Purpose: Compute the dot product of two matrices.
+  // Return: void
+  // Arguments: Flatten 1D result matrix,
+  //            Flatten 1D matrix 1,
+  //            Flatten 1D matrix 2,
+  //            Number of rows first matrix,
+  //            Number of columns first matrix,
+  //            Number of columns second matrix.
+  // Notes: Replication of NumPy "np.dot" function.  
+  void dot_product(double* result, double* matrix1, double* matrix2, int rows1, int cols1, int cols2){
+    for(int i = 0; i<rows1; i++){
+      for(int j = 0; j<cols2; j++){
+        result[i * cols2 + j] = 0.0;
+        for(int k = 0; k<cols1; k++){
+          result[i * cols2 + j] += matrix1[i * cols1 + k] * matrix2[k * cols2 + j];
+        }
+      }
+    }
+  }
+  
+  // Name: softmax
+  // Purpose:  Apply softmax function.
+  // Return: void
+  // Arguments: Flatten 1D output matrix,
+  //            Flatten 1D logits matrix,
+  //            Number of rows logits matrix,
+  //            Number of columns logits matrix.
+  void softmax(double* output, double* logits, int rows, int cols){
+    for(int i = 0; i<rows; i++){
+      double max_val = logits[i * cols];
+      for(int j = 1; j<cols; j++){
+        if(logits[i * cols + j] > max_val){
+          max_val = logits[i * cols + j];
+        }
+      }
+
+      double sum_exp = 0.0;
+      for(int j = 0; j<cols; j++){
+        output[i * cols + j] = exp(logits[i * cols + j] - max_val); // For numerical stability
+        sum_exp += output[i * cols + j];
+      }
+
+      for(int j = 0; j<cols; j++){
+        output[i * cols + j] /=  sum_exp;
+      }
+    }
+  }
+
+  // Name: log_softmax
+  // Purpose: Compute element_wise logarithm of softmax probabilities.
+  // Return: void
+  // Arguments: Flatten 1D output matrix,
+  //            Flatten 1D logits matrix,
+  //            Number of rows logits matrix,
+  //            Number of columns logits matrix.
+  void log_softmax(double* output, double* softmax_probs, int rows, int cols){
+    for(int i = 0; i<rows*cols; i++){
+      output[i] = log(softmax_probs[i]);
+    }
+  }
+
+  // Name: matrix_subtract
+  // Purpose: Subtract two matrices
+  // Return: void
+  // Arguments: Flatten 1D result matrix,
+  //            Flatten 1D matrix 1,
+  //            Flatten 1D matrix 2,
+  //            Number of rows matrix 1 and 2 (same dimensions),
+  //            Number of columns matrix 1 and 2.
+  void matrix_subtract(double* result, double* matrix1, double* matrix2, int rows, int cols){
+    for(int i = 0; i<rows*cols; i++){
+      result[i] = matrix1[i] - matrix2[i];
+    }
+  }
+
+  // Name: transpose
+  // Purpose: Transpose a matrix
+  // Return: void
+  // Arguments: Flatten 1D result matrix,
+  //            Flatten 1D matrix to transpose,
+  //            Number of rows of the matrix,
+  //            Number of columns of the matrix.
+  void transpose(double* result, double* matrix, int rows, int cols){
+    for(int i = 0; i<rows; i++){
+      for(int j = 0; j<cols; j++){
+        result[j * rows + i] = matrix[i * cols + j];
+      }
+    }
+  }
+#+end_src
+
+Functions definition for Softmax, Cross-entropy loss and Gradient descent.
+#+name: funC_soft
+#+begin_src C :results none :noweb yes
+  <<funC_help>>
+
+  // Name: compute_softmax
+  // Purpose: Compute the softmax function.
+  // Return: void
+  // Arguments: Flatten 1D softmax probabilities matrix,
+  //            Flatten 1D parameter theta matrix,
+  //            Flatten 1D bias matrix,
+  //            Flatten 1D inputs matrix,
+  //            Number of rows (samples),
+  //            Number of features,
+  //            Number of classes.
+  void compute_softmax(double* softmax_probs, double* theta, double* bias, double* X, int num_rows, int  num_features, int num_classes){
+    double logits[num_rows * num_classes];
+
+    // Compute logits: z = X * theta.T + bias 
+    dot_product(logits, X, theta, num_rows, num_features, num_classes);
+    for(int i = 0; i<num_rows; i++){
+      for(int j = 0; j<num_classes; j++){
+        logits[i * num_classes + j] += bias[j];
+      }
+    }
+
+    // Apply softmax function
+    softmax(softmax_probs, logits, num_rows, num_classes);
+    } 
+
+  // Name: compute_loss
+  // Purpose: Calculate the cross-entropy loss.
+  // Return: double loss
+  // Arguments: Flatten 1D parameter theta matrix,
+  //            Flatten 1D bias matrix,
+  //            Flatten 1D inputs matrix,
+  //            1D targets vector,
+  //            Number of rows (samples),
+  //            Number of features,
+  //            Number of classes.
+  double compute_loss(double* theta, double* bias, double* X, double* Y, int num_rows, int num_features, int num_classes){
+    double softmax_probs[num_rows * num_classes];
+    compute_softmax(softmax_probs, theta, bias, X, num_rows, num_features, num_classes);
+
+    double log_probs[num_rows * num_classes];
+    log_softmax(log_probs, softmax_probs, num_rows, num_classes);
+
+    double loss = 0.0;
+    for(int i = 0; i<num_rows*num_classes; i++){
+      loss += Y[i] * log_probs[i];
+    } 
+
+    return -loss / num_rows;
+  }
+
+  // Name: compute_loss
+  // Purpose: Compute the Gradient Descent.
+  // Return: void
+  // Arguments: Flatten 1D parameter theta matrix,
+  //            Flatten 1D bias matrix,
+  //            Flatten 1D inputs matrix,
+  //            1D targets vector,
+  //            Number of rows (samples),
+  //            Number of features,
+  //            Number of classes.
+  //            Learning rate.
+  void gradient_descent(double* theta, double* bias, double* X, double* Y, int num_rows, int num_features, int num_classes, double lr){
+    double softmax_probs[num_rows * num_classes];
+    compute_softmax(softmax_probs, theta, bias, X, num_rows, num_features, num_classes);
+
+    // Compute gradients
+    double grad_probs[num_rows * num_classes];
+    matrix_subtract(grad_probs, softmax_probs, Y, num_rows, num_classes);
+
+    double theta_grad[num_classes * num_features];
+    double grad_probs_T[num_features * num_rows];
+    transpose(grad_probs_T, grad_probs, num_rows, num_features);
+
+    dot_product(theta_grad, grad_probs_T, X, num_classes, num_rows, num_features);
+
+    double bias_grad[num_classes];
+    for(int i = 0; i<num_classes; i++){
+      bias_grad[i] = 0.0;
+      for(int j = 0; j<num_rows; j++){
+        bias_grad[i] += grad_probs[j * num_classes + i];
+      }
+      bias_grad[i] /= num_rows;
+    }
+
+    for(int i = 0; i<num_classes * num_features; i++){
+      theta[i] -= lr * theta_grad[i] / num_rows;
+    }
+    for(int i = 0; i<num_classes; i++){
+      bias[i] -= lr * bias_grad[i];
+    }
+  }
+#+end_src
+
+#+name: Main
+#+begin_src C :exports none :main no :noweb yes :cmdline -lm :includes <stdio.h> <math.h> :tangle soft.c
+  // Include function definitions
+  <<funCs_data>>
+  <<funC_soft>>
+  
+  int main(){
+    // Dataset properties
+    int num_rows = 100;
+    int num_features = 4;
+    int num_classes = 3;
+
+    // Training parameters
+    int num_epochs = 1000;
+    int lr = 0.001;
+
+    // Define Arrays
+    int X_2D[num_rows][num_features];
+    int y[num_rows];
+    int y_one_hot_2D[num_rows][num_classes];
+
+    // Flattened Arrays
+    double X[num_rows * num_features];
+    double y_one_hot[num_rows * num_classes];
+
+    // Parameters to optimize
+    double theta[num_features * num_classes];
+    double bias[num_classes];
+
+    // Initialize parameters randomly
+    srand(time(0));
+    for(int i = 0; i<num_features*num_classes; i++){
+      theta[i] = ((double)rand() / RAND_MAX) * 0.1;
+    }
+
+    for(int i = 0; i<num_classes; i++){
+      bias[i] = 0.0;
+    }
+    
+    // Generate data
+    generate_data(num_rows, num_features, num_classes, X_2D, y);
+
+    // One-hot-encode the labels
+    one_hot_encode(y, num_rows, num_classes, y_one_hot_2D);
+
+    // Flatten 2D arrays
+    for(int i = 0; i<num_rows; i++){
+      for(int j = 0; j<num_features; j++){
+        X[i * num_features + j] = X_2D[i][j];
+      }
+      for(int j = 0; j<num_classes; j++){
+        y_one_hot[i * num_classes + j] = y_one_hot_2D[i][j];
+      }
+    }
+
+    // Training loop
+    for(int epoch = 0; epoch<num_epochs; epoch++){
+      if(epoch % 100 == 0){
+        double loss = compute_loss(theta, bias, X, y_one_hot, num_rows, num_features, num_classes);
+        printf("Epoch: %d,\tLoss: %.4f\n", epoch, loss);
+      }
+
+      gradient_descent(theta, bias, X, y_one_hot, num_rows, num_features, num_classes, lr);
+    }
+
+    printf("Final theta values:\n");
+    for (int i = 0; i < num_features * num_classes; i++) {
+      printf("%.4f ", theta[i]);
+      if ((i + 1) % num_features == 0) printf("\n");
+    }
+
+    printf("Final bias values:\n");
+    for (int i = 0; i < num_classes; i++) {
+      printf("%.4f ", bias[i]);
+    }
+    printf("\n");
+    
+
+    return 0;
+    }
+
+
+#+end_src
+
+#+RESULTS: Main
+
+
