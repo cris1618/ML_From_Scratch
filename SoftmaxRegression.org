@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 np.random.seed(1618)
 
 # Dataset properties
-num_rows = 100
+num_rows = 10000
 num_features = 4
 num_classes = 3
 
@@ -59,6 +59,28 @@ columns = [f"Feture_{i+1}" for i in range(num_features)] + ["Class"]
 data = np.hstack((X, y.reshape(-1,1)))
 df = pd.DataFrame(data, columns=columns)
 #print(df.head())
+
+# Create function to split the data (similar to scikit-learn train_test_split)
+def train_test_split(X, y, test_size=0.2, random_state=None):
+    if random_state:
+        np.random.seed(random_state)
+    
+    # Shuffle data
+    indices = np.arange(X.shape[0])
+    np.random.shuffle(indices)
+    
+    X_shuffled = X[indices]
+    y_shuffled = y[indices]
+   
+    split_index = int(X.shape[0] * (1 - test_size))
+
+    X_train, X_test = X_shuffled[:split_index], X_shuffled[split_index:]
+    y_train, y_test = y_shuffled[:split_index], y_shuffled[split_index:]
+    
+    return X_train, X_test, y_train, y_test
+
+# Split the Data
+X_train, X_test, y_train, y_test = train_test_split(X, y_one_hot, test_size=0.2, random_state=1618)
 #+end_src
 
 #+RESULTS: Data
@@ -135,134 +157,120 @@ def gradient_descent(theta, bias, X, Y, lr):
 
 #+RESULTS: functions
 
-Step 3: Training 
+Step 3: Training and Results 
+#+name: train
 #+begin_src python :python python3 :results output 
 <<functions>>
 theta = np.random.rand(num_classes, num_features)
 bias = np.random.rand(num_classes)
 lr = 0.01
-num_epochs = 10000
+num_epochs = 3000
 
 for i in range(num_epochs):
-    if i % 100 == 0:
-        print(f"Epoch: {i}, Loss: {loss_function(theta, bias, X, y_one_hot)}")
-    theta, bias = gradient_descent(theta, bias, X, y_one_hot, lr)
+    #if i % 100 == 0:
+        #print(f"Epoch: {i}, Loss: {loss_function(theta, bias, X, y_one_hot)}")
+    theta, bias = gradient_descent(theta, bias, X_train, y_train, lr)
 
-print(theta, bias)
+#print(theta, bias)
 #+end_src
 
-#+RESULTS:
+#+RESULTS: train
 #+begin_example
-Epoch: 0, Loss: 1.4383780594596607
-Epoch: 100, Loss: 0.8158518365100906
-Epoch: 200, Loss: 0.7627475309895695
-Epoch: 300, Loss: 0.7205126427693952
-Epoch: 400, Loss: 0.6854163643107807
-Epoch: 500, Loss: 0.6553837583416365
-Epoch: 600, Loss: 0.629166420132039
-Epoch: 700, Loss: 0.6059504421192808
-Epoch: 800, Loss: 0.5851678883761177
-Epoch: 900, Loss: 0.5664012092333598
-Epoch: 1000, Loss: 0.549331382646852
-Epoch: 1100, Loss: 0.5337077150621502
-Epoch: 1200, Loss: 0.5193290486328835
-Epoch: 1300, Loss: 0.5060313720541119
-Epoch: 1400, Loss: 0.4936792551554217
-Epoch: 1500, Loss: 0.48215969808879683
-Epoch: 1600, Loss: 0.4713775807293794
-Epoch: 1700, Loss: 0.4612522161626732
-Epoch: 1800, Loss: 0.45171469138455955
-Epoch: 1900, Loss: 0.4427057843652897
-Epoch: 2000, Loss: 0.4341743122352627
-Epoch: 2100, Loss: 0.4260758076197712
-Epoch: 2200, Loss: 0.4183714483604114
-Epoch: 2300, Loss: 0.41102718526566706
-Epoch: 2400, Loss: 0.40401302622657176
-Epoch: 2500, Loss: 0.3973024449065757
-Epoch: 2600, Loss: 0.3908718894637273
-Epoch: 2700, Loss: 0.38470037216771347
-Epoch: 2800, Loss: 0.37876912485652864
-Epoch: 2900, Loss: 0.3730613082959608
-Epoch: 3000, Loss: 0.3675617659106922
-Epoch: 3100, Loss: 0.3622568142277055
-Epoch: 3200, Loss: 0.3571340638405527
-Epoch: 3300, Loss: 0.35218226586216067
-Epoch: 3400, Loss: 0.3473911797549953
-Epoch: 3500, Loss: 0.34275145916375915
-Epoch: 3600, Loss: 0.33825455296765244
-Epoch: 3700, Loss: 0.333892619247353
-Epoch: 3800, Loss: 0.32965845024999807
-Epoch: 3900, Loss: 0.32554540675196564
-Epoch: 4000, Loss: 0.3215473604784451
-Epoch: 4100, Loss: 0.31765864345196837
-Epoch: 4200, Loss: 0.3138740033180574
-Epoch: 4300, Loss: 0.3101885638419918
-Epoch: 4400, Loss: 0.3065977898920149
-Epoch: 4500, Loss: 0.30309745632554597
-Epoch: 4600, Loss: 0.2996836202797567
-Epoch: 4700, Loss: 0.2963525964391148
-Epoch: 4800, Loss: 0.2931009349125389
-Epoch: 4900, Loss: 0.28992540140356454
-Epoch: 5000, Loss: 0.2868229593999599
-Epoch: 5100, Loss: 0.2837907541458122
-Epoch: 5200, Loss: 0.28082609819030596
-Epoch: 5300, Loss: 0.27792645833407875
-Epoch: 5400, Loss: 0.275089443816889
-Epoch: 5500, Loss: 0.27231279560997423
-Epoch: 5600, Loss: 0.2695943766933802
-Epoch: 5700, Loss: 0.26693216321314456
-Epoch: 5800, Loss: 0.264324236425847
-Epoch: 5900, Loss: 0.2617687753489963
-Epoch: 6000, Loss: 0.25926405004523234
-Epoch: 6100, Loss: 0.2568084154766236
-Epoch: 6200, Loss: 0.2544003058725607
-Epoch: 6300, Loss: 0.2520382295610816
-Epoch: 6400, Loss: 0.24972076421899303
-Epoch: 6500, Loss: 0.24744655250102404
-Epoch: 6600, Loss: 0.2452142980125181
-Epoch: 6700, Loss: 0.24302276159393227
-Epoch: 6800, Loss: 0.24087075788873963
-Epoch: 6900, Loss: 0.23875715216926577
-Epoch: 7000, Loss: 0.23668085739758501
-Epoch: 7100, Loss: 0.2346408315009125
-Epoch: 7200, Loss: 0.23263607484296994
-Epoch: 7300, Loss: 0.23066562787462686
-Epoch: 7400, Loss: 0.2287285689487348
-Epoch: 7500, Loss: 0.22682401228552782
-Epoch: 7600, Loss: 0.22495110607624
-Epoch: 7700, Loss: 0.2231090307137612
-Epoch: 7800, Loss: 0.22129699714017637
-Epoch: 7900, Loss: 0.21951424530196517
-Epoch: 8000, Loss: 0.2177600427044767
-Epoch: 8100, Loss: 0.21603368305803336
-Epoch: 8200, Loss: 0.2143344850087054
-Epoch: 8300, Loss: 0.21266179094739257
-Epoch: 8400, Loss: 0.2110149658914109
-Epoch: 8500, Loss: 0.20939339643326688
-Epoch: 8600, Loss: 0.20779648975175882
-Epoch: 8700, Loss: 0.20622367268094607
-Epoch: 8800, Loss: 0.2046743908328962
-Epoch: 8900, Loss: 0.2031481077704544
-Epoch: 9000, Loss: 0.20164430422658342
-Epoch: 9100, Loss: 0.20016247736709775
-Epoch: 9200, Loss: 0.19870214009386514
-Epoch: 9300, Loss: 0.19726282038578047
-Epoch: 9400, Loss: 0.1958440606750243
-Epoch: 9500, Loss: 0.19444541725630787
-Epoch: 9600, Loss: 0.19306645972698167
-Epoch: 9700, Loss: 0.19170677045604356
-Epoch: 9800, Loss: 0.1903659440802298
-Epoch: 9900, Loss: 0.1890435870254994
-[[ 0.04779577 -0.08474396 -0.09984036 -0.07386147]
- [ 0.1807486   0.14857998  0.41066845  0.36575956]
- [ 0.54954818  0.57565603  0.54549412  0.19631824]] [ 5.42783112  0.77522759 -4.99820586]
+Epoch: 0, Loss: 1.9700309176164128
+Epoch: 100, Loss: 0.9944775992936902
+Epoch: 200, Loss: 0.9096532898218269
+Epoch: 300, Loss: 0.8464811355125262
+Epoch: 400, Loss: 0.7960397045181783
+Epoch: 500, Loss: 0.753915268988989
+Epoch: 600, Loss: 0.7177726257488833
+Epoch: 700, Loss: 0.6862268186327652
+Epoch: 800, Loss: 0.6583618096228339
+Epoch: 900, Loss: 0.6335201295089731
+Epoch: 1000, Loss: 0.6112036348595189
+Epoch: 1100, Loss: 0.5910216546290057
+Epoch: 1200, Loss: 0.5726608708575179
+Epoch: 1300, Loss: 0.5558661220424945
+Epoch: 1400, Loss: 0.5404272555341268
+Epoch: 1500, Loss: 0.5261696457548282
+Epoch: 1600, Loss: 0.5129471067999758
+Epoch: 1700, Loss: 0.5006364615491323
+Epoch: 1800, Loss: 0.4891333060888794
+Epoch: 1900, Loss: 0.47834866313573776
+Epoch: 2000, Loss: 0.4682063112109795
+Epoch: 2100, Loss: 0.4586406357647434
+Epoch: 2200, Loss: 0.44959488837418915
+Epoch: 2300, Loss: 0.44101976804173665
+Epoch: 2400, Loss: 0.43287225872085844
+Epoch: 2500, Loss: 0.42511467201928715
+Epoch: 2600, Loss: 0.41771385515490944
+Epoch: 2700, Loss: 0.4106405327052543
+Epoch: 2800, Loss: 0.40386875720319576
+Epoch: 2900, Loss: 0.3973754486840576
+Epoch: 3000, Loss: 0.39114000723825104
+Epoch: 3100, Loss: 0.38514398572911573
+Epoch: 3200, Loss: 0.3793708122912311
+Epoch: 3300, Loss: 0.3738055541756722
+Epoch: 3400, Loss: 0.3684347160661342
+Epoch: 3500, Loss: 0.3632460672381991
+Epoch: 3600, Loss: 0.3582284929386506
+Epoch: 3700, Loss: 0.35337186617330896
+Epoch: 3800, Loss: 0.348666936749879
+Epoch: 3900, Loss: 0.3441052349577478
+Epoch: 4000, Loss: 0.33967898770386545
+Epoch: 4100, Loss: 0.3353810452820679
+Epoch: 4200, Loss: 0.3312048172476353
+Epoch: 4300, Loss: 0.3271442161117617
+Epoch: 4400, Loss: 0.3231936077715017
+Epoch: 4500, Loss: 0.31934776775753454
+Epoch: 4600, Loss: 0.31560184252089757
+Epoch: 4700, Loss: 0.311951315095763
+Epoch: 4800, Loss: 0.30839197457241174
+Epoch: 4900, Loss: 0.30491988889609045
+[[0.17181794 0.4329654  0.33394459 0.21769787]
+ [0.29702252 0.39270683 0.82204791 0.62884188]
+ [0.49084321 0.84485356 0.82669333 0.47993371]] [ 4.08642427  0.629978   -2.97738098]
 #+end_example
+
+Step 4: Evaluate the model
+#+name: evaluate
+#+begin_src  python :python python3 :results output 
+<<train>>
+# Function to make prdictions
+def predict(theta, bias, X):
+    # Compute softmax probabilities
+    softmax_probs = softmax(theta, bias, X)
+    
+    # Select the class with the highest probability
+    predictions = np.argmax(softmax_probs, axis=1)
+    return predictions
+
+# Accuracy computation
+def evaluate_accuracy(theta, bias, X, y_true):
+    predictions = predict(theta, bias, X)
+
+    # Convert one-hot to class indicies
+    y_true_classes = np.argmax(y_true, axis=1)
+
+    accuracy = np.sum(predictions == y_true_classes) / y_true_classes.shape[0]
+    return accuracy
+
+# Evaluate accuracy of the model 
+accuracy_test = evaluate_accuracy(theta, bias, X_test, y_test)
+print(f"Model Accuracy (test): {accuracy_test * 100:.2f}%")
+
+accuracy_train = evaluate_accuracy(theta, bias, X_train, y_train)
+print(f"Model Accuracy (train): {accuracy_train * 100:.2f}%")
+#+end_src
+
+#+RESULTS: evaluate
+: Model Accuracy (test): 98.15%
+: Model Accuracy (train): 98.46%
 
 ** C Code
 Now let's recreate the same softmax algorithm in C,
 following the same steps as the Python implementation.
 
-Functions definition to generate data.
+Functions definition to generate and split the data.
 #+name: funCs_data
 #+begin_src C :results none :noweb yes :includes <stdio.h> <math.h> 
   // Include libraries 
@@ -287,15 +295,15 @@ Functions definition to generate data.
   // Return: void
   // Arguments: Number of rows, Number of features
   // Number of classes, Features array X and target y
-  void generate_data(int num_rows, int num_features, int num_classes, int X[][num_features], int y[]){
+  void generate_data(int num_rows, int num_features, int num_classes, double X[][num_features], int y[]){
     int examples_per_class = num_rows / num_classes;
 
     // Further generalizible, example purpose
     // Mean for each class
-    int means[3][4] = {
-      {2, 2, 2, 2},
-      {6, 6, 6, 6},
-      {10, 10, 10, 10}
+    double means[3][4] = {
+      {2.0, 2.0, 2.0, 2.0},
+      {6.0, 6.0, 6.0, 6.0},
+      {10.0, 10.0, 10.0, 10.0}
     };
 
     // seed random generator
@@ -307,7 +315,8 @@ Functions definition to generate data.
         int index = class_label * examples_per_class + i;
         for(int j = 0; j<num_features; j++){
           // Generate random data around the mean (Gaussian)
-          X[index][j] = means[class_label][j] + (rand() % 3 - 1);
+          double noise = ((double)rand() / RAND_MAX) * 0.5 - 0.25; // add noise
+          X[index][j] = means[class_label][j] + noise;
         }
         y[index] = class_label;
       }
@@ -318,15 +327,70 @@ Functions definition to generate data.
   // Purpose: Create one hot encoded target array
   // Return: void
   // Arguments: Target array y, Number of rows, 
-  // Number of classes, Target one hot encoded empty array;
-  void one_hot_encode(int y[], int num_rows, int num_classes, int y_one_hot[][num_classes]){
+  // Number of classes, Target one hot encoded empty array
+  void one_hot_encode(int y[], int num_rows, int num_classes, double y_one_hot[][num_classes]){
     for(int i = 0; i<num_rows; i++){
       for(int j = 0; j<num_classes; j++){
         y_one_hot[i][j] = (y[i] == j) ? 1 : 0;
       }
     }
   }
-#+end_src
+
+  // Name: shuffle
+  // Purpose: Shuffle indices.
+  // Return: void
+  // Arguments: indices,
+  //            Number of rows (total number of indices to shuffle),
+  //            Random State.
+  void shuffle(int* indices, int num_rows, int random_state){
+    srand(random_state);
+    for(int i = num_rows - 1; i > 0; i--){
+      int j = rand() % (i+1);
+      int temp = indices[i];
+      indices[i] = indices[j];
+      indices[j] = temp;
+    }
+  }
+
+  // Name: train_test_split
+  // Purpose: Split the data for training and for testing.
+  // Return: void
+  // Arguments: X to split,
+  //            y to split,
+  //            X_train, X_test, y_train, y_test (Outputs),
+  //            Number of rows,
+  //            Number of features,
+  //            Test size,
+  //            Random State.
+  void train_test_split(double* X, double* y, double* X_train, double* X_test, double* y_train, double* y_test, int num_rows, int num_features, double test_size, int random_state){
+    int indices[num_rows];
+    for(int i = 0; i<num_rows; i++){
+      indices[i] = i;
+    }
+
+    shuffle(indices, num_rows, random_state);
+
+    int split_index = (int)(num_rows * (1 - test_size));
+
+    // Perform split
+    for(int i = 0; i<split_index; i++){
+      int idx = indices[i];
+      for(int j = 0; j<num_features; j++){
+        X_train[i * num_features + j] = X[idx * num_features + j];
+      }
+      y_train[i] = y[idx];
+    }
+
+    for(int i = split_index; i<num_rows; i++){
+      int idx = indices[i];
+      for(int j = 0; j<num_features; j++){
+        X_test[(i - split_index) * num_features + j] = X[idx * num_features + j];
+      }
+      y_test[i - split_index] = y[idx];
+    }
+  }
+
+  #+end_src
 
 Define helper functions for operation with matrices and functions (softmax in this case) computation.
 #+name: funC_help
@@ -351,7 +415,7 @@ Define helper functions for operation with matrices and functions (softmax in th
       }
     }
   }
-  
+
   // Name: softmax
   // Purpose:  Apply softmax function.
   // Return: void
@@ -428,30 +492,52 @@ Functions definition for Softmax, Cross-entropy loss and Gradient descent.
 #+begin_src C :results none :noweb yes
   <<funC_help>>
 
-  // Name: compute_softmax
-  // Purpose: Compute the softmax function.
-  // Return: void
-  // Arguments: Flatten 1D softmax probabilities matrix,
-  //            Flatten 1D parameter theta matrix,
-  //            Flatten 1D bias matrix,
-  //            Flatten 1D inputs matrix,
-  //            Number of rows (samples),
-  //            Number of features,
-  //            Number of classes.
-  void compute_softmax(double* softmax_probs, double* theta, double* bias, double* X, int num_rows, int  num_features, int num_classes){
+    // Name: compute_softmax
+    // Purpose: Compute the softmax function.
+    // Return: void
+    // Arguments: Flatten 1D softmax probabilities matrix,
+    //            Flatten 1D parameter theta matrix,
+    //            Flatten 1D bias matrix,
+    //            Flatten 1D inputs matrix,
+    //            Number of rows (samples),
+    //            Number of features,
+    //            Number of classes.
+  void compute_softmax(double* softmax_probs, double* theta, double* bias, double* X, int num_rows, int num_features, int num_classes){
     double logits[num_rows * num_classes];
 
     // Compute logits: z = X * theta.T + bias 
     dot_product(logits, X, theta, num_rows, num_features, num_classes);
-    for(int i = 0; i<num_rows; i++){
-      for(int j = 0; j<num_classes; j++){
+
+    // Add the bias to logits
+    for (int i = 0; i < num_rows; i++) {
+      for (int j = 0; j < num_classes; j++) {
         logits[i * num_classes + j] += bias[j];
       }
     }
 
-    // Apply softmax function
-    softmax(softmax_probs, logits, num_rows, num_classes);
-    } 
+    // Stabilize logits using the log-sum-exp trick
+    for (int i = 0; i < num_rows; i++) {
+      // Step 1: Find max logit for each row (sample)
+      double max_logit = logits[i * num_classes];
+      for (int j = 1; j < num_classes; j++) {
+        if (logits[i * num_classes + j] > max_logit) {
+          max_logit = logits[i * num_classes + j];
+        }
+      }
+
+      // Step 2: Subtract max logit and compute exp
+      double sum_exp = 0.0;
+      for (int j = 0; j < num_classes; j++) {
+        softmax_probs[i * num_classes + j] = exp(logits[i * num_classes + j] - max_logit);  // Shift for stability
+        sum_exp += softmax_probs[i * num_classes + j];
+      }
+
+      // Step 3: Normalize the probabilities
+      for (int j = 0; j < num_classes; j++) {
+        softmax_probs[i * num_classes + j] /= sum_exp;
+      }
+    }
+    }
 
   // Name: compute_loss
   // Purpose: Calculate the cross-entropy loss.
@@ -498,8 +584,8 @@ Functions definition for Softmax, Cross-entropy loss and Gradient descent.
     matrix_subtract(grad_probs, softmax_probs, Y, num_rows, num_classes);
 
     double theta_grad[num_classes * num_features];
-    double grad_probs_T[num_features * num_rows];
-    transpose(grad_probs_T, grad_probs, num_rows, num_features);
+    double grad_probs_T[num_classes * num_rows]; // num_features
+    transpose(grad_probs_T, grad_probs, num_rows, num_classes); // num_features
 
     dot_product(theta_grad, grad_probs_T, X, num_classes, num_rows, num_features);
 
@@ -507,44 +593,52 @@ Functions definition for Softmax, Cross-entropy loss and Gradient descent.
     for(int i = 0; i<num_classes; i++){
       bias_grad[i] = 0.0;
       for(int j = 0; j<num_rows; j++){
-        bias_grad[i] += grad_probs[j * num_classes + i];
+        bias_grad[i] += (softmax_probs[j * num_classes + i] - Y[j * num_classes + i]);
       }
-      bias_grad[i] /= num_rows;
     }
 
     for(int i = 0; i<num_classes * num_features; i++){
       theta[i] -= lr * theta_grad[i] / num_rows;
     }
     for(int i = 0; i<num_classes; i++){
-      bias[i] -= lr * bias_grad[i];
+      bias[i] -= lr * bias_grad[i] / num_rows;
     }
   }
 #+end_src
 
+Training and Accuracy computation.
 #+name: Main
 #+begin_src C :exports none :main no :noweb yes :cmdline -lm :includes <stdio.h> <math.h> :tangle soft.c
   // Include function definitions
   <<funCs_data>>
   <<funC_soft>>
-  
+
   int main(){
     // Dataset properties
-    int num_rows = 100;
+    int num_rows = 1000;
     int num_features = 4;
     int num_classes = 3;
+    double test_size = 0.2;
+    int random_state = 1618;
 
     // Training parameters
-    int num_epochs = 1000;
-    int lr = 0.001;
+    int num_epochs = 100000;
+    double lr = 0.001;
 
     // Define Arrays
-    int X_2D[num_rows][num_features];
+    double X_2D[num_rows][num_features];
     int y[num_rows];
-    int y_one_hot_2D[num_rows][num_classes];
+    double y_one_hot_2D[num_rows][num_classes];
 
     // Flattened Arrays
     double X[num_rows * num_features];
     double y_one_hot[num_rows * num_classes];
+
+    // Train and test Arrays
+    double X_train[(int)(num_rows * (1 - test_size)) * num_features];
+    double X_test[(int)(num_rows * test_size) * num_features];
+    double y_train[(int)(num_rows * (1 - test_size))];
+    double y_test[(int)(num_rows * test_size)];
 
     // Parameters to optimize
     double theta[num_features * num_classes];
@@ -557,14 +651,17 @@ Functions definition for Softmax, Cross-entropy loss and Gradient descent.
     }
 
     for(int i = 0; i<num_classes; i++){
-      bias[i] = 0.0;
+      bias[i] = ((double)rand() / RAND_MAX) * 0.1;
     }
-    
+
     // Generate data
     generate_data(num_rows, num_features, num_classes, X_2D, y);
 
     // One-hot-encode the labels
     one_hot_encode(y, num_rows, num_classes, y_one_hot_2D);
+
+    // Split the data
+    train_test_split(X, y_one_hot, X_train, X_test, y_train, y_test, num_rows, num_features, test_size, random_state);
 
     // Flatten 2D arrays
     for(int i = 0; i<num_rows; i++){
@@ -582,8 +679,7 @@ Functions definition for Softmax, Cross-entropy loss and Gradient descent.
         double loss = compute_loss(theta, bias, X, y_one_hot, num_rows, num_features, num_classes);
         printf("Epoch: %d,\tLoss: %.4f\n", epoch, loss);
       }
-
-      gradient_descent(theta, bias, X, y_one_hot, num_rows, num_features, num_classes, lr);
+      gradient_descent(theta, bias, X_train, y_train, num_rows, num_features, num_classes, lr);
     }
 
     printf("Final theta values:\n");
@@ -597,12 +693,10 @@ Functions definition for Softmax, Cross-entropy loss and Gradient descent.
       printf("%.4f ", bias[i]);
     }
     printf("\n");
-    
+
 
     return 0;
     }
-
-
 #+end_src
 
 #+RESULTS: Main
