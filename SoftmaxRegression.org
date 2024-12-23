@@ -302,8 +302,8 @@ Functions definition to generate and split the data.
     // Mean for each class
     double means[3][4] = {
       {2.0, 2.0, 2.0, 2.0},
-      {6.0, 6.0, 6.0, 6.0},
-      {10.0, 10.0, 10.0, 10.0}
+      {10.0, 10.0, 10.0, 10.0},
+      {25.0, 25.0, 25.0, 25.0}
     };
 
     // seed random generator
@@ -315,8 +315,9 @@ Functions definition to generate and split the data.
         int index = class_label * examples_per_class + i;
         for(int j = 0; j<num_features; j++){
           // Generate random data around the mean (Gaussian)
-          double noise = ((double)rand() / RAND_MAX) * 0.5 - 0.25; // add noise
-          X[index][j] = means[class_label][j] + noise;
+           double noise = ((double)rand() / RAND_MAX) * 1.5 - 0.75; // add noise
+           X[index][j] = means[class_label][j] + noise;
+          //X[index][j] = ((rand() % 10) + class_label * 4) / 10.0;
         }
         y[index] = class_label;
       }
@@ -362,7 +363,7 @@ Functions definition to generate and split the data.
   //            Number of features,
   //            Test size,
   //            Random State.
-  void train_test_split(double* X, double* y, double* X_train, double* X_test, double* y_train, double* y_test, int num_rows, int num_features, double test_size, int random_state){
+  void train_test_split(double* X, double* y, double* X_train, double* X_test, double* y_train, double* y_test, int num_rows, int num_features, int num_classes, double test_size, int random_state){
     int indices[num_rows];
     for(int i = 0; i<num_rows; i++){
       indices[i] = i;
@@ -378,7 +379,8 @@ Functions definition to generate and split the data.
       for(int j = 0; j<num_features; j++){
         X_train[i * num_features + j] = X[idx * num_features + j];
       }
-      y_train[i] = y[idx];
+      for(int j = 0; j<num_classes; j++)
+        y_train[i * num_classes + j] = y[idx * num_classes + j];
     }
 
     for(int i = split_index; i<num_rows; i++){
@@ -386,11 +388,12 @@ Functions definition to generate and split the data.
       for(int j = 0; j<num_features; j++){
         X_test[(i - split_index) * num_features + j] = X[idx * num_features + j];
       }
-      y_test[i - split_index] = y[idx];
+      for(int j = 0; j<num_classes; j++)
+        y_test[(i - split_index) * num_classes + j] = y[idx * num_classes + j];
     }
   }
 
-  #+end_src
+#+end_src
 
 Define helper functions for operation with matrices and functions (softmax in this case) computation.
 #+name: funC_help
@@ -485,9 +488,27 @@ Define helper functions for operation with matrices and functions (softmax in th
       }
     }
   }
+
+  // Name: argmax
+  // Purpose: Find index which corresponds to the maxiumum value of an array
+  // Return: int
+  // Arguments: Array,
+  //            Array's size
+  int argmax(double* arr, int size){
+    int max_index = 0;
+    double max_value = arr[0];
+
+    for(int i = 0; i<size; i++){
+      if(arr[i] > max_value){
+        max_value = arr[i];
+        max_index = i;
+      }
+    }
+    return max_index;
+  } 
 #+end_src
 
-Functions definition for Softmax, Cross-entropy loss and Gradient descent.
+Functions definition for Softmax, Cross-entropy loss, Gradient descent, compute predictions and accuracy.
 #+name: funC_soft
 #+begin_src C :results none :noweb yes
   <<funC_help>>
@@ -558,9 +579,9 @@ Functions definition for Softmax, Cross-entropy loss and Gradient descent.
 
     double loss = 0.0;
     for(int i = 0; i<num_rows*num_classes; i++){
-      loss += Y[i] * log_probs[i];
+      if(Y[i] > 0)
+        loss += Y[i] * log_probs[i];
     } 
-
     return -loss / num_rows;
   }
 
@@ -588,7 +609,7 @@ Functions definition for Softmax, Cross-entropy loss and Gradient descent.
     transpose(grad_probs_T, grad_probs, num_rows, num_classes); // num_features
 
     dot_product(theta_grad, grad_probs_T, X, num_classes, num_rows, num_features);
-
+   
     double bias_grad[num_classes];
     for(int i = 0; i<num_classes; i++){
       bias_grad[i] = 0.0;
@@ -597,12 +618,60 @@ Functions definition for Softmax, Cross-entropy loss and Gradient descent.
       }
     }
 
+    double lambda = 0.01; // L2 Regularization
     for(int i = 0; i<num_classes * num_features; i++){
-      theta[i] -= lr * theta_grad[i] / num_rows;
+      theta[i] -= lr * (theta_grad[i] / num_rows + lambda * theta[i]);
     }
     for(int i = 0; i<num_classes; i++){
       bias[i] -= lr * bias_grad[i] / num_rows;
     }
+  }
+
+  // Name: predict
+  // Purpose: Infer predictions on new data
+  // Return: void
+  // Arguments: Predictions array
+  //            Flatten 1D parameter theta matrix,
+  //            Flatten 1D bias matrix,
+  //            Flatten 1D inputs matrix,
+  //            Number of rows (samples),
+  //            Number of features,
+  //            Number of classes.
+  void predict(int* predictions, double* theta, double* bias, double* X, int num_rows, int num_features, int num_classes){
+    double softmax_probs[num_rows * num_classes];
+    compute_softmax(softmax_probs, theta, bias, X, num_rows, num_features, num_classes);
+
+    for(int i = 0; i<num_rows; i++){
+      predictions[i] = argmax(&softmax_probs[i * num_classes], num_classes);
+    }
+
+  }
+
+  // Name: evaluate_accuracy
+  // Purpose: Evaluate the accuracy of the model.
+  // Return: double
+  // Arguments: Flatten 1D parameter theta matrix,      
+  //            Flatten 1D bias matrix,
+  //            Flatten 1D inputs matrix,
+  //            Flatten 1D target data,
+  //            Number of rows (samples),
+  //            Number of features,
+  //            Number of classes.
+  double evaluate_accuracy(double* theta, double* bias, double* X, double* y_true, int num_rows, int num_features, int num_classes){
+    int predictions[num_rows];
+    int correct = 0;
+
+    // Get predictions
+    predict(predictions, theta, bias, X, num_rows, num_features, num_classes);
+
+    // Compare predictions with targets
+    for(int i = 0; i<num_rows; i++){
+      int true_class = argmax(&y_true[i * num_classes], num_classes);
+      if(predictions[i] == true_class){
+        correct++;
+      }
+    }
+    return (double)correct/num_rows;
   }
 #+end_src
 
@@ -618,12 +687,14 @@ Training and Accuracy computation.
     int num_rows = 1000;
     int num_features = 4;
     int num_classes = 3;
-    double test_size = 0.2;
+    double split_size = 0.2;
     int random_state = 1618;
+    int train_size = (int)(num_rows * (1 - split_size));
+    int test_size = (int)(num_rows * split_size);
 
     // Training parameters
-    int num_epochs = 100000;
-    double lr = 0.001;
+    int num_epochs = 10000;
+    double lr = 0.01; // 0.001
 
     // Define Arrays
     double X_2D[num_rows][num_features];
@@ -635,10 +706,10 @@ Training and Accuracy computation.
     double y_one_hot[num_rows * num_classes];
 
     // Train and test Arrays
-    double X_train[(int)(num_rows * (1 - test_size)) * num_features];
-    double X_test[(int)(num_rows * test_size) * num_features];
-    double y_train[(int)(num_rows * (1 - test_size))];
-    double y_test[(int)(num_rows * test_size)];
+    double X_train[(int)(num_rows * (1 - split_size)) * num_features];
+    double X_test[(int)(num_rows * split_size) * num_features];
+    double y_train[(int)(num_rows * (1 - split_size)) * num_classes];
+    double y_test[(int)(num_rows * split_size) * num_classes];
 
     // Parameters to optimize
     double theta[num_features * num_classes];
@@ -647,11 +718,11 @@ Training and Accuracy computation.
     // Initialize parameters randomly
     srand(time(0));
     for(int i = 0; i<num_features*num_classes; i++){
-      theta[i] = ((double)rand() / RAND_MAX) * 0.1;
+      theta[i] = ((double)rand() / RAND_MAX) * 0.01;
     }
 
     for(int i = 0; i<num_classes; i++){
-      bias[i] = ((double)rand() / RAND_MAX) * 0.1;
+      bias[i] = 0.0;
     }
 
     // Generate data
@@ -659,9 +730,6 @@ Training and Accuracy computation.
 
     // One-hot-encode the labels
     one_hot_encode(y, num_rows, num_classes, y_one_hot_2D);
-
-    // Split the data
-    train_test_split(X, y_one_hot, X_train, X_test, y_train, y_test, num_rows, num_features, test_size, random_state);
 
     // Flatten 2D arrays
     for(int i = 0; i<num_rows; i++){
@@ -672,14 +740,17 @@ Training and Accuracy computation.
         y_one_hot[i * num_classes + j] = y_one_hot_2D[i][j];
       }
     }
+   
+    // Split the data
+    train_test_split(X, y_one_hot, X_train, X_test, y_train, y_test, num_rows, num_features, num_classes, split_size, random_state);
 
     // Training loop
     for(int epoch = 0; epoch<num_epochs; epoch++){
       if(epoch % 100 == 0){
-        double loss = compute_loss(theta, bias, X, y_one_hot, num_rows, num_features, num_classes);
+        double loss = compute_loss(theta, bias, X_train, y_train, train_size, num_features, num_classes);
         printf("Epoch: %d,\tLoss: %.4f\n", epoch, loss);
       }
-      gradient_descent(theta, bias, X_train, y_train, num_rows, num_features, num_classes, lr);
+      gradient_descent(theta, bias, X_train, y_train, train_size, num_features, num_classes, lr);
     }
 
     printf("Final theta values:\n");
@@ -693,6 +764,14 @@ Training and Accuracy computation.
       printf("%.4f ", bias[i]);
     }
     printf("\n");
+
+    // Evaluate model accuracy
+    // Train set
+    double train_acc = evaluate_accuracy(theta, bias, X_train, y_train, train_size, num_features, num_classes);
+    printf("Model accuracy on training set: %.2f%%\n", train_acc*100);
+
+    double test_acc = evaluate_accuracy(theta, bias, X_test, y_test, test_size, num_features, num_classes);
+    printf("Model accuracy on testing set: %.2f%%\n", test_acc*100);
 
 
     return 0;
