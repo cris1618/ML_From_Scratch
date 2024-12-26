@@ -5,8 +5,8 @@
 
 * Introduction
 In this notebook, I will implement a Linear Regression algorithm 
-from scratch using Python, without relying on any external libraries.
-* Code
+from scratch using Python and C, without relying on any external libraries.
+* Algorithm Description
 The goal is to minimize the error function,
 the error function is defined as:
 
@@ -33,9 +33,10 @@ steps the model takes to minimize the target function (=E=) and reach its
 optimal value.
 
 Now Let's see the code!
+* Code
 ** Python Code
 #+name: lg
-#+begin_src  python :python python3
+#+begin_src python :python python3
   import matplotlib.pyplot as plt
   import pandas as pd
   import random

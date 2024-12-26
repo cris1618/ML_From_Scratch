@@ -203,8 +203,6 @@ Epoch: 900, Loss: -4.6643067931827025
     ,*bias += bias_grad * lr;
   }
 
-
-
 #+end_src
 
 #+RESULTS:
