@@ -6,6 +6,59 @@
 * Introduction
 In this notebook, I will implement a Softmax Regression algorithm 
 from scratch using Python and C, without relying on any external libraries.
+* Algorithm Description
+** Description
+Softmax Regression is a generalization of Logistic Regression for multiclass 
+classification problems, where the number of possible classes is greater than two. 
+While Logistic Regression is used to classify data into one of two binary 
+categories, Softmax Regression extends this capability to handle cases with three 
+or more classes, as we'll see in the code below.
+
+In Softmax Regression, the goal is to predict the probability that a given input 
+belongs to each class. The model outputs a probability distribution across all 
+possible classes, ensuring that the probabilities sum to 1. The class with the 
+highest probability is selected as the predicted class.
+
+** Mathematical Formulation
+Let:
+
+- 𝑋 ∈ 𝑅𝑚×𝑛 be the input data (with 𝑚 samples and 𝑛 features)
+- 𝑌 ∈ 𝑅𝑚×𝑘 be the one-hot encoded labels (with 𝑘 classes)
+- 𝜃 ∈ 𝑅𝑘×𝑛 the weight matrix
+- 𝑏 ∈ 𝑅𝑘 the bias vector
+*** 1. Linear Transformation
+Compute the logits (raw scores) for each class:
+
+z_i = \mathbf{X} \boldsymbol{\theta}_i^T + b_i
+
+*** 2. Softmax Function
+Apply the softmax function to get class probabilities:
+
+P(y_i = j \mid \mathbf{X}) = \frac{e^{z_j}}{\sum_{l=1}^{k} e^{z_l}}
+
+Where:
+- 𝑧𝑗 is the logit for class 𝑗
+- 𝑘 is the total number of classes
+This ensures that the outputs sum to 1 and represent probabilities.
+
+*** 3. Cross-Entropy Loss
+The loss function is the cross-entropy, which compares the predicted probability 
+distribution to the true labels:
+
+L(\theta, b) = - \frac{1}{m} \sum_{i=1}^{m} \sum_{j=1}^{k} y_{ij} \log P(y_i = j \mid \mathbf{X})
+
+Where:
+- 𝑦𝑖𝑗 = 1 if sample 𝑖 belongs to class 𝑗, otherwise 𝑦𝑖𝑗 = 0
+*** 4. Gradient Descent
+Update the model parameters by minimizing the loss using gradient descent:
+
+\theta_{ij} \leftarrow \theta_{ij} - \alpha \left( \frac{1}{m} \sum_{i=1}^{m} (P(y_i = j \mid \mathbf{X}) - y_{ij}) x_i \right)
+
+Where:
+- 𝛼 is the learning rate
+
+Now, Let's Code!
+
 * Code
 ** Python Code
 Step 1: Creating the data.
