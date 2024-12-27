@@ -5,7 +5,7 @@
 
 * Introduction
 In this notebook, I will implement a Softmax Regression algorithm 
-from scratch using Python and C, without relying on any external libraries.
+from scratch using Python and C, without relying on any ML related external libraries.
 * Algorithm Description
 ** Description
 Softmax Regression is a generalization of Logistic Regression for multiclass 
