@@ -9,11 +9,176 @@ using Python and C, without relying on any ML related external libraries.
 * Algorithm Description
 * Code
 ** Python Code
+First thing first, let's import the data. The dataset I'll 
+use in the following code contains a set of SMS messages
+with the respective labels: "spam" if the message was classified
+as spam, and "non-spam" otherwise.
 #+name: data
 #+begin_src python :python python3 :results output
+import numpy as np
+import pandas as pd
+import os
+import string
+from collections import defaultdict
+import nltk
+from nltk.corpus import stopwords
 
+# Importing the data (SMS Spam vs Non-Spam)
+dir = os.getcwdb().decode('utf-8')
+file_path = os.path.join(dir, 'SMSSpamCollection')
+data = pd.read_csv(file_path, sep='\t', header=None, names=["Labels", "Message"])
+data["Labels"] = data["Labels"].replace("ham", "non-spam")
+
+#print(data.head())
 #+end_src
 
 #+RESULTS: data
+
+To analyze the text, we'll have to perform some preprocessing step.
+In particular, I'll lowercase, remove punctuation, remove stopwords 
+and split into words the messages in the dataset.
+#+name: preprocess
+#+begin_src python :python python3 :results output
+<<data>>
+
+# Load English stop words
+#nltk.download('stopwords')
+stop_words = set(stopwords.words('english'))
+
+# Function to preprocess text
+def preprocess_text(text):
+    # Lowercase
+    text = text.lower()
+    # Remove Punctuation
+    text = text.translate(str.maketrans('','', string.punctuation))
+    # Tokenize by splitting on spaces
+    tokens = text.split()
+    # Remove stop words
+    filtered_tokens = [word for word in tokens if word not in stop_words]
+
+    return filtered_tokens
+
+# Apply preprocessing to the dataset
+data["Processed"] = data["Message"].apply(preprocess_text)
+
+#print(data.head())
+#+end_src
+
+#+RESULTS: preprocess
+#+begin_example
+[nltk_data] Downloading package stopwords to
+[nltk_data]     /home/uycdcdycdgycdydc/nltk_data...
+[nltk_data]   Package stopwords is already up-to-date!
+     Labels  ...                                          Processed
+0  non-spam  ...  [go, jurong, point, crazy, available, bugis, n...
+1  non-spam  ...                     [ok, lar, joking, wif, u, oni]
+2      spam  ...  [free, entry, 2, wkly, comp, win, fa, cup, fin...
+3  non-spam  ...      [u, dun, say, early, hor, u, c, already, say]
+4  non-spam  ...  [nah, dont, think, goes, usf, lives, around, t...
+
+[5 rows x 3 columns]
+#+end_example
+
+Now let's calculate the word frequency for each word
+in the preprocessed text.
+#+name: word
+#+begin_src python :python python3 :results output
+<<preprocess>>
+
+# Function to calculate word frequencies
+def calculate_word_frequencies(data):
+    spam_word_counts = defaultdict(int)
+    non_spam_word_counts = defaultdict(int)
+
+    for i, row in data.iterrows():
+        for word in row["Processed"]:
+            if row["Labels"] == "spam":
+                spam_word_counts[word] += 1
+            else:
+                non_spam_word_counts[word] += 1
+
+    return spam_word_counts, non_spam_word_counts
+
+# Calculate frequencies
+spam_counts, non_spam_counts = calculate_word_frequencies(data)
+
+#print("Most common spam words:", sorted(spam_counts.items(), key=lambda x: x[1], reverse=True)[:10])
+#print("Most common non-spam words:", sorted(non_spam_counts.items(), key=lambda x: x[1], reverse=True)[:10])
+#+end_src
+
+#+RESULTS: word
+: Most common spam words: [('call', 347), ('free', 216), ('2', 173), ('txt', 150), ('u', 147), ('ur', 144), ('mobile', 123), ('text', 120), ('4', 119), ('stop', 115)]
+: Most common non-spam words: [('u', 985), ('im', 451), ('2', 309), ('get', 303), ('ltgt', 276), ('ok', 273), ('dont', 265), ('go', 250), ('ur', 246), ('ill', 238)]
+
+Compute the probabilities of spam and non-spam messages
+#+name: prob
+#+begin_src python :python python3 :results output
+<<word>>
+
+total_messages = len(data)
+spam_messages = len(data[data["Labels"] == "spam"])
+non_spam_messages = total_messages - spam_messages
+
+prior_spam = spam_messages / total_messages
+prior_non_spam = non_spam_messages / total_messages
+
+#print(f"Prior Spam probability: {prior_spam:.2f}")
+#print(f"Prior Non-Spam probability: {prior_non_spam:.2f}")
+#+end_src
+
+#+RESULTS: prob
+: Prior Spam probability: 0.13
+: Prior Non-Spam probability: 0.87
+
+Implement Naive Bayes Classifier
+#+name: alg
+#+begin_src python :python python3 :results output
+<<prob>>
+
+def predict(message, spam_counts, non_spam_counts, prior_spam, prior_non_spam):
+    message = preprocess_text(message)
+    
+    # Initialize Log probabilities
+    spam_prob = np.log(prior_spam)
+    non_spam_prob = np.log(prior_non_spam)
+    
+    # Total number of words in each class
+    total_spam_words = sum(spam_counts.values())
+    total_non_spam_words = sum(non_spam_counts.values())
+    
+    for word in message:
+        # Laplace smoothing (add 1)
+        spam_prob += np.log((spam_counts[word] + 1) / (total_spam_words + len(spam_counts)))
+        non_spam_prob += np.log((non_spam_counts[word] + 1) / (total_spam_words + len(non_spam_counts)))
+
+    return "spam" if spam_prob > non_spam_prob else "non-spam"
+
+test_message = "Congratulations, you have won a free iPhone!"
+#print(f"Prediction for message: {predict(test_message, spam_counts, non_spam_counts, prior_spam, prior_non_spam)}")
+#+end_src
+
+#+RESULTS: alg
+: Prediction for message: Spam
+
+Evaluate the simple Naive Bayes model
+#+name: eval
+#+begin_src python :python python3 :results output
+<<alg>>
+
+correct = 0
+
+for i, row in data.iterrows():
+    prediction = predict(row["Message"], spam_counts, non_spam_counts, prior_spam, prior_non_spam)
+    #print(prediction, row["Labels"])
+    if prediction == row["Labels"]:
+        correct += 1
+
+accuracy = correct / total_messages
+print(f"Model Accuracy: {accuracy * 100:.2f}%")
+#+end_src
+
+#+RESULTS: eval
+: Model Accuracy: 98.40%
+
 
 ** C Code
