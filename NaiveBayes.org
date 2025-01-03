@@ -15,21 +15,21 @@ with the respective labels: "spam" if the message was classified
 as spam, and "non-spam" otherwise.
 #+name: data
 #+begin_src python :python python3 :results output
-import numpy as np
-import pandas as pd
-import os
-import string
-from collections import defaultdict
-import nltk
-from nltk.corpus import stopwords
+  import numpy as np
+  import pandas as pd
+  import os
+  import string
+  from collections import defaultdict
+  import nltk
+  from nltk.corpus import stopwords
 
-# Importing the data (SMS Spam vs Non-Spam)
-dir = os.getcwdb().decode('utf-8')
-file_path = os.path.join(dir, 'SMSSpamCollection')
-data = pd.read_csv(file_path, sep='\t', header=None, names=["Labels", "Message"])
-data["Labels"] = data["Labels"].replace("ham", "non-spam")
+  # Importing the data (SMS Spam vs Non-Spam)
+  dir = os.getcwdb().decode('utf-8')
+  file_path = os.path.join(dir, 'SMSSpamCollection')
+  data = pd.read_csv(file_path, sep='\t', header=None, names=["Labels", "Message"])
+  data["Labels"] = data["Labels"].replace("ham", "non-spam")
 
-#print(data.head())
+  #print(data.head())
 #+end_src
 
 #+RESULTS: data
@@ -39,29 +39,29 @@ In particular, I'll lowercase, remove punctuation, remove stopwords
 and split into words the messages in the dataset.
 #+name: preprocess
 #+begin_src python :python python3 :results output
-<<data>>
+  <<data>>
 
-# Load English stop words
-#nltk.download('stopwords')
-stop_words = set(stopwords.words('english'))
+  # Load English stop words
+  #nltk.download('stopwords')
+  stop_words = set(stopwords.words('english'))
 
-# Function to preprocess text
-def preprocess_text(text):
-    # Lowercase
-    text = text.lower()
-    # Remove Punctuation
-    text = text.translate(str.maketrans('','', string.punctuation))
-    # Tokenize by splitting on spaces
-    tokens = text.split()
-    # Remove stop words
-    filtered_tokens = [word for word in tokens if word not in stop_words]
+  # Function to preprocess text
+  def preprocess_text(text):
+      # Lowercase
+      text = text.lower()
+      # Remove Punctuation
+      text = text.translate(str.maketrans('','', string.punctuation))
+      # Tokenize by splitting on spaces
+      tokens = text.split()
+      # Remove stop words
+      filtered_tokens = [word for word in tokens if word not in stop_words]
 
-    return filtered_tokens
+      return filtered_tokens
 
-# Apply preprocessing to the dataset
-data["Processed"] = data["Message"].apply(preprocess_text)
+  # Apply preprocessing to the dataset
+  data["Processed"] = data["Message"].apply(preprocess_text)
 
-#print(data.head())
+  #print(data.head())
 #+end_src
 
 #+RESULTS: preprocess
@@ -83,27 +83,26 @@ Now let's calculate the word frequency for each word
 in the preprocessed text.
 #+name: word
 #+begin_src python :python python3 :results output
-<<preprocess>>
+  <<preprocess>>
+  # Function to calculate word frequencies
+  def calculate_word_frequencies(data):
+      spam_word_counts = defaultdict(int)
+      non_spam_word_counts = defaultdict(int)
 
-# Function to calculate word frequencies
-def calculate_word_frequencies(data):
-    spam_word_counts = defaultdict(int)
-    non_spam_word_counts = defaultdict(int)
+      for i, row in data.iterrows():
+          for word in row["Processed"]:
+              if row["Labels"] == "spam":
+                  spam_word_counts[word] += 1
+              else:
+                  non_spam_word_counts[word] += 1
 
-    for i, row in data.iterrows():
-        for word in row["Processed"]:
-            if row["Labels"] == "spam":
-                spam_word_counts[word] += 1
-            else:
-                non_spam_word_counts[word] += 1
+      return spam_word_counts, non_spam_word_counts
 
-    return spam_word_counts, non_spam_word_counts
+  # Calculate frequencies
+  spam_counts, non_spam_counts = calculate_word_frequencies(data)
 
-# Calculate frequencies
-spam_counts, non_spam_counts = calculate_word_frequencies(data)
-
-#print("Most common spam words:", sorted(spam_counts.items(), key=lambda x: x[1], reverse=True)[:10])
-#print("Most common non-spam words:", sorted(non_spam_counts.items(), key=lambda x: x[1], reverse=True)[:10])
+  #print("Most common spam words:", sorted(spam_counts.items(), key=lambda x: x[1], reverse=True)[:10])
+  #print("Most common non-spam words:", sorted(non_spam_counts.items(), key=lambda x: x[1], reverse=True)[:10])
 #+end_src
 
 #+RESULTS: word
@@ -113,48 +112,46 @@ spam_counts, non_spam_counts = calculate_word_frequencies(data)
 Compute the probabilities of spam and non-spam messages
 #+name: prob
 #+begin_src python :python python3 :results output
-<<word>>
+  <<word>>
 
-total_messages = len(data)
-spam_messages = len(data[data["Labels"] == "spam"])
-non_spam_messages = total_messages - spam_messages
+  total_messages = len(data)
+  spam_messages = len(data[data["Labels"] == "spam"])
+  non_spam_messages = total_messages - spam_messages
 
-prior_spam = spam_messages / total_messages
-prior_non_spam = non_spam_messages / total_messages
+  prior_spam = spam_messages / total_messages
+  prior_non_spam = non_spam_messages / total_messages
 
-#print(f"Prior Spam probability: {prior_spam:.2f}")
-#print(f"Prior Non-Spam probability: {prior_non_spam:.2f}")
+  #print(f"Prior Spam probability: {prior_spam:.2f}")
+  #print(f"Prior Non-Spam probability: {prior_non_spam:.2f}")
 #+end_src
 
 #+RESULTS: prob
-: Prior Spam probability: 0.13
-: Prior Non-Spam probability: 0.87
 
 Implement Naive Bayes Classifier
 #+name: alg
 #+begin_src python :python python3 :results output
-<<prob>>
+  <<prob>>
 
-def predict(message, spam_counts, non_spam_counts, prior_spam, prior_non_spam):
-    message = preprocess_text(message)
-    
-    # Initialize Log probabilities
-    spam_prob = np.log(prior_spam)
-    non_spam_prob = np.log(prior_non_spam)
-    
-    # Total number of words in each class
-    total_spam_words = sum(spam_counts.values())
-    total_non_spam_words = sum(non_spam_counts.values())
-    
-    for word in message:
-        # Laplace smoothing (add 1)
-        spam_prob += np.log((spam_counts[word] + 1) / (total_spam_words + len(spam_counts)))
-        non_spam_prob += np.log((non_spam_counts[word] + 1) / (total_spam_words + len(non_spam_counts)))
+  def predict(message, spam_counts, non_spam_counts, prior_spam, prior_non_spam):
+      message = preprocess_text(message)
 
-    return "spam" if spam_prob > non_spam_prob else "non-spam"
+      # Initialize Log probabilities
+      spam_prob = np.log(prior_spam)
+      non_spam_prob = np.log(prior_non_spam)
 
-test_message = "Congratulations, you have won a free iPhone!"
-#print(f"Prediction for message: {predict(test_message, spam_counts, non_spam_counts, prior_spam, prior_non_spam)}")
+      # Total number of words in each class
+      total_spam_words = sum(spam_counts.values())
+      total_non_spam_words = sum(non_spam_counts.values())
+
+      for word in message:
+          # Laplace smoothing (add 1)
+          spam_prob += np.log((spam_counts[word] + 1) / (total_spam_words + len(spam_counts)))
+          non_spam_prob += np.log((non_spam_counts[word] + 1) / (total_spam_words + len(non_spam_counts)))
+
+      return "spam" if spam_prob > non_spam_prob else "non-spam"
+
+  test_message = "Congratulations, you have won a free iPhone!"
+  #print(f"Prediction for message: {predict(test_message, spam_counts, non_spam_counts, prior_spam, prior_non_spam)}")
 #+end_src
 
 #+RESULTS: alg
@@ -163,22 +160,249 @@ test_message = "Congratulations, you have won a free iPhone!"
 Evaluate the simple Naive Bayes model
 #+name: eval
 #+begin_src python :python python3 :results output
-<<alg>>
+  <<alg>>
+  correct = 0
 
-correct = 0
+  for i, row in data.iterrows():
+      prediction = predict(row["Message"], spam_counts, non_spam_counts, prior_spam, prior_non_spam)
+      if prediction == row["Labels"]:
+          correct += 1
 
-for i, row in data.iterrows():
-    prediction = predict(row["Message"], spam_counts, non_spam_counts, prior_spam, prior_non_spam)
-    #print(prediction, row["Labels"])
-    if prediction == row["Labels"]:
-        correct += 1
-
-accuracy = correct / total_messages
-print(f"Model Accuracy: {accuracy * 100:.2f}%")
+  accuracy = correct / total_messages
+  print(f"Model Accuracy: {accuracy * 100:.2f}%")
 #+end_src
 
 #+RESULTS: eval
 : Model Accuracy: 98.40%
 
-
 ** C Code
+Now let's follow the same steps, but in C.
+1) Loading the data.
+#+name: data_load
+#+begin_src C :results output :main no :noweb yes
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <string.h>
+  #include <ctype.h>
+  #include <math.h>
+
+  #define MAX_LINES 5000
+  #define MAX_MESSAGE_LENGTH 1000
+
+  typedef struct SMS{
+    char label[10];
+    char message[MAX_MESSAGE_LENGTH];
+  } SMS;
+
+  typedef struct WordCount{
+    char word[50];
+    int count;
+  } WordCount;
+
+  WordCount spam_words[MAX_LINES];
+  WordCount non_spam_words[MAX_LINES];
+  int spam_word_count = 0;
+  int non_spam_word_count = 0;
+  double prior_spam, prior_non_spam;
+
+  // Name: load_data
+  // Purpose: Load a text file.
+  // Return: int, number of line 
+  // Arguments: Filename, Struct to store data.
+  int load_data(const char* filename, SMS* data){
+    FILE* file = fopen(filename, "r");
+    if(file == NULL){
+      perror("Error opening file");
+      return -1;
+    }
+
+    char line[MAX_MESSAGE_LENGTH + 20]; // extra space for label
+    int count = 0;
+
+    while(fgets(line, sizeof(line), file)){
+      char* label = strtok(line, "\t");
+      char* message = strtok(NULL, "\n");
+
+      if(label && message){
+        strcpy(data[count].label, label);
+        strcpy(data[count].message, message);
+        count++;
+      }
+    }
+
+    fclose(file);
+    return count;
+  }
+#+end_src
+
+#+RESULTS: data_load
+
+2) Text Preprocessing.
+#+name: text_pre
+#+begin_src C :results output :main no :noweb yes
+  <<data_load>>
+
+    // Name: to_lowercase
+    // Purpose: Convert string to lowercase.
+    // Return: void
+    // Arguments: String.
+  void to_lowercase(char* str){
+    for(; *str; str++)
+      ,*str = tolower(*str);
+    }
+
+  // Name: remove_punctuation
+  // Purpose: Remove punctuation from a string.
+  // Return: void
+  // Arguments: String.
+  void remove_punctuation(char* str){
+    char* src = str, *dst = str;
+    while(*src){
+      if(!ispunct((unsigned char)*src)){
+        ,*dst++ = *src;
+      }
+      src++;
+    }
+    ,*dst = '\0';
+  }
+
+  // Name: is_stopword
+  // Purpose: check if a word is a stopword.
+  // Return: int
+  // Arguments: Word (String).
+  int is_stopword(const char* word){
+    const char* stopwords[] = {"the", "to", "and", "i", "a", "is", "of", "in", "for", "on", "you", "it", "that"};
+    int num_stopwords = sizeof(stopwords) / sizeof(stopwords[0]);
+    for(int i = 0; i<num_stopwords; i++){
+      if(strcmp(word, stopwords[i]) == 0)
+        return 1;
+    }
+    return 0;
+  }
+
+  // Name: preprocess_message
+  // Purpose: Apply all preprocesing functions.
+  // Return: void
+  // Arguments: message.
+  void preprocess_message(char* message){
+    to_lowercase(message);
+    remove_punctuation(message);
+
+    char temp[MAX_MESSAGE_LENGTH];
+    strcpy(temp, message);
+
+    char* word = strtok(temp, " ");
+    message[0] = '\0';
+
+    while(word){
+      if(!is_stopword(word)){
+        strcat(message, word);
+        strcat(message, " ");
+      }
+      word = strtok(NULL, " ");
+    }
+  }
+#+end_src
+
+#+RESULTS: text_pre
+
+3) Calculate Word Frequencies.
+#+name: word_fre
+#+begin_src C :results output :main no :noweb yes
+  <<text_pre>>
+
+    // Name: update_word_count
+    // Purpose: update word frequencies.
+    // Return: void
+    // Arguments: wordcount, size, word.
+  void update_word_count(WordCount* counts, int* size, const char* word){
+    for(int i = 0; i<*size; i++){
+      if(strcmp(counts[i].word, word) == 0){
+        counts[i].count++;
+        return;
+      }
+    }
+    strcpy(counts[*size].word, word);
+    counts[*size].count = 1;
+    (*size)++;
+    }
+
+  // Name: calculate_word_frequencies
+  // Purpose: Count word frequencies.
+  // Return: void
+  // Arguments: SMS data, number of messages.
+  void calculate_word_frequencies(SMS* data, int total_messages){
+    for(int i = 0; i<total_messages; i++){
+      char temp[MAX_MESSAGE_LENGTH];
+      strcpy(temp, data[i].message);
+      char* word = strtok(temp, " ");
+
+      while(word){
+        if(strcmp(data[i].label, "spam") == 0){
+          update_word_count(spam_words, &spam_word_count, word);
+        } else {
+          update_word_count(non_spam_words, &non_spam_word_count, word);
+        }
+        word = strtok(NULL, " ");
+      }
+    }
+  }
+#+end_src
+
+#+RESULTS: word_fre
+
+4) Compute Prior Probabilities.
+#+name: prob_n
+#+begin_src C :results output :main no :noweb yes
+  <<word_fre>>
+
+    // Name: compute_prior_probabilities
+    // Purpose: Compute prior probabilities.
+    // Return: void
+    // Arguments: data, total meassages.
+  void compute_prior_probabilities(SMS* data, int total_messages){
+    int spam_count = 0;
+
+    for(int i = 0; i<total_messages; i++){
+      if(strcmp(data[i].label, "spam") == 0)
+        spam_count++;
+    }
+
+    prior_spam = (double)spam_count / total_messages;
+    prior_non_spam = 1.0 - prior_spam;
+    }
+#+end_src
+
+5) Naive Bayes Algorithm and predictions
+#+name: naive
+#+begin_src C :results output :main no :noweb yes
+<<prob_n>>
+
+// Name: predict
+    // Purpose: Predict spam or non-spam messages.
+    // Return: const char
+    // Arguments: message.
+const char* predict(char* message){
+preprocess_message(message);
+
+double spam_prob = log(prior_spam);
+double non_spam_prob = log(prior_non_spam);
+
+char temp[MAX_MESSAGE_LENGTH];
+strcpy(temp, message);
+char* word = strtok(temp, " ");
+
+int total_spam = spam_word_count;
+int total_non_spam = non_spam_word_count;
+
+while(word){
+int spam_count = 1;
+int non_spam_count = 1;
+
+
+}
+} 
+
+#+end_src
+
+#+RESULTS: naive
