@@ -7,6 +7,58 @@
 In this notebook, I will implement a Naive Bayes model from scratch 
 using Python and C, without relying on any ML related external libraries.
 * Algorithm Description
+Naive Bayes is a probabilistic algorithm based on Bayes' Theorem, 
+often used for classification tasks like text classification and spam 
+detection. It assumes that features (words, in this case) are conditionally 
+independent, which simplifies computation but still provides strong results 
+for many problems.
+
+** Key Concepts
+- *Bayes' Theorem:*
+\[
+P(C|X) = \frac{P(X|C) \cdot P(C)}{P(X)}
+\]
+Where:  
+\( P(C|X) \) – Posterior probability (class given data)  
+\( P(X|C) \) – Likelihood (data given class)  
+\( P(C) \) – Prior (class probability)  
+\( P(X) \) – Evidence (data probability)  
+
+- *Simplification:*  
+For multiple features \( X = (x_1, x_2, ..., x_n) \), the formula becomes:  
+\[
+P(C|X) \propto P(C) \cdot \prod_{i=1}^{n} P(x_i|C)
+\]
+This assumes all features \( x_i \) are independent.
+
+** How It Works
+1. *Training Phase:*
+   - Calculate *word frequencies* for spam and non-spam messages separately.  
+   - Compute *prior probabilities* for spam and non-spam messages.  
+   - Apply *Laplace smoothing* to handle unseen words during classification.
+
+2. *Prediction Phase:*  
+   - For a given message, compute the probability of it being spam or non-spam by summing the log of word likelihoods:  
+\[
+\log P(\text{spam}|X) = \log P(\text{spam}) + \sum_{i} \log P(x_i|\text{spam})
+\]  
+\[
+\log P(\text{non-spam}|X) = \log P(\text{non-spam}) + \sum_{i} \log P(x_i|\text{non-spam})
+\]
+   - Choose the class with the *higher probability*.
+
+** Advantages
+- *Fast and efficient,* even with large datasets.  
+- *Handles high-dimensional data* well.  
+- *Requires minimal training data*.
+** Limitations
+- Assumes *conditional independence* between features, which may not hold true in all cases.  
+- *Zero-frequency problem* – addressed by *Laplace smoothing*.  
+- *Sensitive to irrelevant features*.
+** Applications
+- *Email spam filtering*  
+- *Sentiment analysis*  
+- *Document classification*  
 * Code
 ** Python Code
 First thing first, let's import the data. The dataset I'll 
@@ -34,7 +86,7 @@ as spam, and "non-spam" otherwise.
 
 #+RESULTS: data
 
-To analyze the text, we'll have to perform some preprocessing step.
+To analyze the text, we'll have to perform some preprocessing steps.
 In particular, I'll lowercase, remove punctuation, remove stopwords 
 and split into words the messages in the dataset.
 #+name: preprocess
@@ -79,7 +131,7 @@ and split into words the messages in the dataset.
 [5 rows x 3 columns]
 #+end_example
 
-Now let's calculate the word frequency for each word
+Now let's calculate the word frequencies for each word
 in the preprocessed text.
 #+name: word
 #+begin_src python :python python3 :results output
@@ -109,7 +161,7 @@ in the preprocessed text.
 : Most common spam words: [('call', 347), ('free', 216), ('2', 173), ('txt', 150), ('u', 147), ('ur', 144), ('mobile', 123), ('text', 120), ('4', 119), ('stop', 115)]
 : Most common non-spam words: [('u', 985), ('im', 451), ('2', 309), ('get', 303), ('ltgt', 276), ('ok', 273), ('dont', 265), ('go', 250), ('ur', 246), ('ill', 238)]
 
-Compute the probabilities of spam and non-spam messages
+Compute the probabilities of spam and non-spam messages.
 #+name: prob
 #+begin_src python :python python3 :results output
   <<word>>
@@ -127,7 +179,7 @@ Compute the probabilities of spam and non-spam messages
 
 #+RESULTS: prob
 
-Implement Naive Bayes Classifier
+Implement Naive Bayes Classifier.
 #+name: alg
 #+begin_src python :python python3 :results output
   <<prob>>
@@ -157,7 +209,7 @@ Implement Naive Bayes Classifier
 #+RESULTS: alg
 : Prediction for message: Spam
 
-Evaluate the simple Naive Bayes model
+Evaluate the simple Naive Bayes model.
 #+name: eval
 #+begin_src python :python python3 :results output
   <<alg>>
@@ -199,10 +251,12 @@ Now let's follow the same steps, but in C.
     int count;
   } WordCount;
 
-  WordCount spam_words[MAX_LINES];
-  WordCount non_spam_words[MAX_LINES];
+  WordCount* spam_words;
+  WordCount* non_spam_words;
   int spam_word_count = 0;
   int non_spam_word_count = 0;
+  int spam_capacity = 10000;
+  int non_spam_capacity = 10000;
   double prior_spam, prior_non_spam;
 
   // Name: load_data
@@ -220,13 +274,21 @@ Now let's follow the same steps, but in C.
     int count = 0;
 
     while(fgets(line, sizeof(line), file)){
+      if(count >= MAX_LINES){
+        printf("Exceeded maximum lines.\n");
+        break;
+      }
       char* label = strtok(line, "\t");
       char* message = strtok(NULL, "\n");
 
       if(label && message){
-        strcpy(data[count].label, label);
-        strcpy(data[count].message, message);
+        strncpy(data[count].label, label, sizeof(data[count].label)-1);
+        strncpy(data[count].message, message, sizeof(data[count].message)-1);
+        data[count].label[sizeof(data[count].label) - 1] = '\0';
+        data[count].message[sizeof(data[count].message) - 1] = '\0';
         count++;
+      } else {
+        printf("Skipping malformed line: %s\n", line);
       }
     }
 
@@ -310,28 +372,55 @@ Now let's follow the same steps, but in C.
 #+name: word_fre
 #+begin_src C :results output :main no :noweb yes
   <<text_pre>>
-
-    // Name: update_word_count
-    // Purpose: update word frequencies.
+    // Name: resize_array
+    // Purpose: Resize array when needed.
     // Return: void
-    // Arguments: wordcount, size, word.
-  void update_word_count(WordCount* counts, int* size, const char* word){
+    // Arguments: wordcount, capacity.
+  void resize_array(WordCount** counts, int* capacity){
+    ,*capacity *= 2; // double the size
+    ,*counts = realloc(*counts, (*capacity) * sizeof(WordCount));
+    if(*counts == NULL){
+      perror("Memory reallocation failed");
+      exit(EXIT_FAILURE);
+    }
+    }
+
+  // Name: update_word_count
+  // Purpose: update word frequencies.
+  // Return: void
+  // Arguments: wordcount, size,capacity, word.
+  void update_word_count(WordCount** counts, int* size, int* capacity, const char* word){
     for(int i = 0; i<*size; i++){
-      if(strcmp(counts[i].word, word) == 0){
-        counts[i].count++;
+      if(strcmp((*counts)[i].word, word) == 0){
+        (*counts)[i].count++;
         return;
       }
     }
-    strcpy(counts[*size].word, word);
-    counts[*size].count = 1;
-    (*size)++;
+
+    // Resize if capacity exceeded
+    if(*size >= *capacity){
+      resize_array(counts, capacity);
     }
+
+    strcpy((*counts)[*size].word, word);
+    (*counts)[*size].count = 1;
+    (*size)++;
+  }
 
   // Name: calculate_word_frequencies
   // Purpose: Count word frequencies.
   // Return: void
   // Arguments: SMS data, number of messages.
   void calculate_word_frequencies(SMS* data, int total_messages){
+    // Allocate memory
+    spam_words = malloc(spam_capacity * sizeof(WordCount));
+    non_spam_words = malloc(non_spam_capacity * sizeof(WordCount));
+
+    if(spam_words == NULL || non_spam_words == NULL){
+      perror("Memory allocation failed");
+      exit(EXIT_FAILURE);
+    }
+
     for(int i = 0; i<total_messages; i++){
       char temp[MAX_MESSAGE_LENGTH];
       strcpy(temp, data[i].message);
@@ -339,9 +428,9 @@ Now let's follow the same steps, but in C.
 
       while(word){
         if(strcmp(data[i].label, "spam") == 0){
-          update_word_count(spam_words, &spam_word_count, word);
+          update_word_count(&spam_words, &spam_word_count, &spam_capacity, word);
         } else {
-          update_word_count(non_spam_words, &non_spam_word_count, word);
+          update_word_count(&non_spam_words, &non_spam_word_count, &non_spam_capacity, word);
         }
         word = strtok(NULL, " ");
       }
@@ -416,7 +505,7 @@ Now let's follow the same steps, but in C.
       non_spam_prob += log((double)non_spam_count / (total_non_spam + non_spam_word_count));
       word = strtok(NULL, " ");
     }
-    return (spam_prob > non_spam_prob) ? "spam" : "non-spam";
+    return (spam_prob > non_spam_prob) ? "spam" : "ham";
     } 
 
 #+end_src
@@ -470,6 +559,8 @@ Now let's follow the same steps, but in C.
     double accuracy = evaluate(data, total_messages);
     printf("Model Accuracy: %.2f%%\n", accuracy);
 
+    free(spam_words);
+    free(non_spam_words);
     return 0;
     }
 
