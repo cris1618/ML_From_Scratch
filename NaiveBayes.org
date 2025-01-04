@@ -376,33 +376,103 @@ Now let's follow the same steps, but in C.
 5) Naive Bayes Algorithm and predictions
 #+name: naive
 #+begin_src C :results output :main no :noweb yes
-<<prob_n>>
+  <<prob_n>>
 
-// Name: predict
+    // Name: predict
     // Purpose: Predict spam or non-spam messages.
     // Return: const char
     // Arguments: message.
-const char* predict(char* message){
-preprocess_message(message);
+  const char* predict(char* message){
+    preprocess_message(message);
 
-double spam_prob = log(prior_spam);
-double non_spam_prob = log(prior_non_spam);
+    double spam_prob = log(prior_spam);
+    double non_spam_prob = log(prior_non_spam);
 
-char temp[MAX_MESSAGE_LENGTH];
-strcpy(temp, message);
-char* word = strtok(temp, " ");
+    char temp[MAX_MESSAGE_LENGTH];
+    strcpy(temp, message);
+    char* word = strtok(temp, " ");
 
-int total_spam = spam_word_count;
-int total_non_spam = non_spam_word_count;
+    int total_spam = spam_word_count;
+    int total_non_spam = non_spam_word_count;
 
-while(word){
-int spam_count = 1;
-int non_spam_count = 1;
+    while(word){
+      int spam_count = 1; // Laplace Smoothing
+      int non_spam_count = 1;
 
+      for(int i = 0; i<spam_word_count; i++){
+        if(strcmp(spam_words[i].word, word) == 0){
+          spam_count += spam_words[i].count;
+          break;
+        }
+      }
+      for(int i = 0; i<non_spam_word_count; i++){
+        if(strcmp(non_spam_words[i].word, word) == 0){
+          non_spam_count += non_spam_words[i].count;
+          break;
+        }
+      }
 
-}
-} 
+      spam_prob += log((double)spam_count / (total_spam + spam_word_count));
+      non_spam_prob += log((double)non_spam_count / (total_non_spam + non_spam_word_count));
+      word = strtok(NULL, " ");
+    }
+    return (spam_prob > non_spam_prob) ? "spam" : "non-spam";
+    } 
 
 #+end_src
 
 #+RESULTS: naive
+
+6) Evaluation
+#+name: evaluate
+#+begin_src C :results output :main no :noweb yes
+  <<naive>>
+
+    // Name: evaluate
+    // Purpose: Evaluate accuracy of the model.
+    // Return: double
+    // Arguments: SMS data, number of total messages.
+  double evaluate(SMS* data, int total_messages){
+    int correct = 0;
+
+    for(int i = 0; i<total_messages; i++){
+      const char* prediction = predict(data[i].message);
+      if(strcmp(prediction, data[i].label) == 0)
+        correct++;
+    }
+    return (double)correct / total_messages * 100;
+    }
+
+
+#+end_src
+
+#+RESULTS: evaluate
+
+7) Main function test
+#+name: main
+#+begin_src C :results output :noweb yes :tangle naive.c
+  <<evaluate>>
+  int main(){
+    SMS data[MAX_LINES];
+
+    // Load the data
+    int total_messages = load_data("./SMSSpamCollection", data);
+    if(total_messages == -1){
+      return 1;
+    }
+    printf("Loaded %d messages\n", total_messages);
+
+    // Preprocess and compute word frequencies
+    calculate_word_frequencies(data, total_messages);
+    compute_prior_probabilities(data, total_messages);
+
+    // Evaluate the classifier
+    double accuracy = evaluate(data, total_messages);
+    printf("Model Accuracy: %.2f%%\n", accuracy);
+
+    return 0;
+    }
+
+#+end_src
+
+#+RESULTS: main
