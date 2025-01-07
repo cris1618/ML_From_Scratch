@@ -1,0 +1,23 @@
+#+TITLE: Support Vector Machine from Scratch
+#+AUTHOR: Cristian Del Gobbo (pledged)
+#+STARTUP: overview hideblocks indent
+#+property: header-args:python :python python3 :session *Python* :results output :exports both :noweb yes :tangle yes:
+
+* Introduction
+In this notebook, I will implement a Support Vector Machine (SVM) algorithm 
+from scratch using Python and C, without relying on any ML related external libraries.
+* Algorithm Description
+* Code
+** Python Code
+#+begin_src python :python python3 :results output
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+
+#+end_src
+
+#+RESULTS:
+: Hello
+
+** C Code
