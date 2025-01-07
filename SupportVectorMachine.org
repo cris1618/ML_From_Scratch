@@ -43,8 +43,8 @@ columns = [
 
 # Import the data
 data = pd.read_csv(file_path, sep=",", header=None, names=columns)
-data["Diagnosis"] = data["Diagnosis"].replace("M", 1)
-data["Diagnosis"] = data["Diagnosis"].replace("B", 0)
+data["Diagnosis"] = data["Diagnosis"].replace("M", -1)
+data["Diagnosis"] = data["Diagnosis"].replace("B", 1)
 
 X = data.drop(["Diagnosis", "ID"], axis=1)
 y = data["Diagnosis"]
@@ -64,18 +64,6 @@ y = data["Diagnosis"]
 4        20.29         14.34  ...          0.2364                  0.07678
 
 [5 rows x 30 columns]
-#+end_example
-
-#+RESULTS:
-#+begin_example
-         ID  Diagnosis  Radius_mean  ...  Concave_points_worst  Symmetry_worst  Fractal_dimension_worst
-0    842302          1        17.99  ...                0.2654          0.4601                  0.11890
-1    842517          1        20.57  ...                0.1860          0.2750                  0.08902
-2  84300903          1        19.69  ...                0.2430          0.3613                  0.08758
-3  84348301          1        11.42  ...                0.2575          0.6638                  0.17300
-4  84358402          1        20.29  ...                0.1625          0.2364                  0.07678
-
-[5 rows x 32 columns]
 #+end_example
 
 Since SVMs are sensitive to feature scaling, it's important
@@ -123,9 +111,8 @@ class StandardScaler:
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-# Split the data (Not applying scaler for testing data)
-X_train, _ , y_train, y_test = train_test_split(X_scaled, y, 0.2, random_state=1618)
-_, X_test, _, _ = train_test_split(X, y, 0.2, random_state=1618)
+# Split the data
+X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, 0.2, random_state=1618)
 
 # Ensure they are numerical
 X_train = np.array(X_train.astype(float))
@@ -197,12 +184,14 @@ Now,let's test the model!
 #+name: test
 #+begin_src python :python python3 :results output
 <<svm>>
-
 # Model initialization
-svm_classifier = SVM(learning_rate=0.0001)
+svm_classifier = SVM(learning_rate=0.001, num_epochs=1000)
 
 # Train the model
 svm_classifier.train(X_train, y_train) 
+
+# Test the model
+y_pred = svm_classifier.predict(X_test)
 
 # Evaluate the model
 svm_classifier.evaluate(X_test, y_test)
@@ -210,19 +199,19 @@ svm_classifier.evaluate(X_test, y_test)
 
 #+RESULTS: test
 #+begin_example
-/tmp/babel-RxHvao/python-xrRlR7:22: FutureWarning: Downcasting behavior in `replace` is deprecated and will be removed in a future version. To retain the old behavior, explicitly call `result.infer_objects(copy=False)`. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
-  data["Diagnosis"] = data["Diagnosis"].replace("B", 0)
-Epoch: 0, Loss: 0.6561
-Epoch: 100, Loss: 0.1001
-Epoch: 200, Loss: 0.0900
-Epoch: 300, Loss: 0.0863
-Epoch: 400, Loss: 0.0841
-Epoch: 500, Loss: 0.0827
-Epoch: 600, Loss: 0.0822
-Epoch: 700, Loss: 0.0818
-Epoch: 800, Loss: 0.0816
-Epoch: 900, Loss: 0.0814
-Model Accuracy: 40.35%
+/tmp/babel-RxHvao/python-NCZjhi:22: FutureWarning: Downcasting behavior in `replace` is deprecated and will be removed in a future version. To retain the old behavior, explicitly call `result.infer_objects(copy=False)`. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  data["Diagnosis"] = data["Diagnosis"].replace("B", 1)
+Epoch: 0, Loss: 0.1850
+Epoch: 100, Loss: 0.0814
+Epoch: 200, Loss: 0.0809
+Epoch: 300, Loss: 0.0809
+Epoch: 400, Loss: 0.0809
+Epoch: 500, Loss: 0.0810
+Epoch: 600, Loss: 0.0809
+Epoch: 700, Loss: 0.0809
+Epoch: 800, Loss: 0.0809
+Epoch: 900, Loss: 0.0809
+Model Accuracy: 97.37%
 #+end_example
 
 ** C Code
