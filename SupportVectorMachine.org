@@ -9,15 +9,101 @@ from scratch using Python and C, without relying on any ML related external libr
 * Algorithm Description
 * Code
 ** Python Code
+Let's start by importing the data. The dataset used is "The Wisconsin Breast Cancer dataset (WDBC)".
+This dataset consists of 569 samples of breast cancer cell nuclei. Each sample is described by 30 
+numerical features derived from digitized images of fine needle aspirates (FNA). The diagnosis column 
+indicates whether the tumor is malignant (M) or benign (B). This dataset is commonly used for 
+binary classification tasks.
+
+The dataset includes:
+- 1 ID column (sample identifier)
+- 1 Diagnosis column (M = malignant, B = benign)
+- 30 Features describing the cell nuclei's properties (radius, texture, perimeter, area, etc.)
+
+The goal is to predict the diagnosis based on the input features. 
+#+name: data
 #+begin_src python :python python3 :results output
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
+
+dir = os.getcwdb().decode('utf-8')
+file_path = os.path.join(dir, "Datasets/breast_cancer/wdbc.data")
+
+# Columns names
+columns = [
+    "ID", "Diagnosis", "Radius_mean", "Texture_mean", "Perimeter_mean", "Area_mean", "Smoothness_mean", 
+    "Compactness_mean", "Concavity_mean", "Concave_points_mean", "Symmetry_mean", "Fractal_dimension_mean",
+    "Radius_se", "Texture_se", "Perimeter_se", "Area_se", "Smoothness_se", "Compactness_se", "Concavity_se", 
+    "Concave_points_se", "Symmetry_se", "Fractal_dimension_se",
+    "Radius_worst", "Texture_worst", "Perimeter_worst", "Area_worst", "Smoothness_worst", 
+    "Compactness_worst", "Concavity_worst", "Concave_points_worst", "Symmetry_worst", "Fractal_dimension_worst"
+]
+
+# Import the data
+data = pd.read_csv(file_path, sep=",", header=None, names=columns)
+data["Diagnosis"] = data["Diagnosis"].replace("M", 1)
+data["Diagnosis"] = data["Diagnosis"].replace("B", 0)
+
+X = data.drop(["Diagnosis", "ID"], axis=1)
+y = data["Diagnosis"]
+
+#print(data.head())
+#+end_src
+
+#+RESULTS: data
+#+begin_example
+/tmp/babel-4Pwgpn/python-UWWTW6:22: FutureWarning: Downcasting behavior in `replace` is deprecated and will be removed in a future version. To retain the old behavior, explicitly call `result.infer_objects(copy=False)`. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  data["Diagnosis"] = data["Diagnosis"].replace("B", 0)
+   Radius_mean  Texture_mean  ...  Symmetry_worst  Fractal_dimension_worst
+0        17.99         10.38  ...          0.4601                  0.11890
+1        20.57         17.77  ...          0.2750                  0.08902
+2        19.69         21.25  ...          0.3613                  0.08758
+3        11.42         20.38  ...          0.6638                  0.17300
+4        20.29         14.34  ...          0.2364                  0.07678
+
+[5 rows x 30 columns]
+#+end_example
+
+#+RESULTS:
+#+begin_example
+         ID  Diagnosis  Radius_mean  ...  Concave_points_worst  Symmetry_worst  Fractal_dimension_worst
+0    842302          1        17.99  ...                0.2654          0.4601                  0.11890
+1    842517          1        20.57  ...                0.1860          0.2750                  0.08902
+2  84300903          1        19.69  ...                0.2430          0.3613                  0.08758
+3  84348301          1        11.42  ...                0.2575          0.6638                  0.17300
+4  84358402          1        20.29  ...                0.1625          0.2364                  0.07678
+
+[5 rows x 32 columns]
+#+end_example
+
+
+#+name: preprocess
+#+begin_src python :python python3 :results output
+<<data>>
+# Create function to split the data (similar to scikit-learn train_test_split)
+def train_test_split(X, y, test_size=0.2, random_state=None):
+    if random_state:
+        np.random.seed(random_state)
+    
+    # Shuffle data
+    indices = np.arange(X.shape[0])
+    np.random.shuffle(indices)
+    
+    X_shuffled = X[indices]
+    y_shuffled = y[indices]
+   
+    split_index = int(X.shape[0] * (1 - test_size))
+
+    X_train, X_test = X_shuffled[:split_index], X_shuffled[split_index:]
+    y_train, y_test = y_shuffled[:split_index], y_shuffled[split_index:]
+    
+    return X_train, X_test, y_train, y_test
 
 
 #+end_src
 
-#+RESULTS:
-: Hello
+#+RESULTS: preprocess
 
 ** C Code
