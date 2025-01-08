@@ -119,27 +119,55 @@ X_train = np.array(X_train.astype(float))
 y_train = np.array(y_train.astype(int))
 #+end_src
 
-#+RESULTS: preprocess
-: /tmp/babel-RxHvao/python-NJPcHs:22: FutureWarning: Downcasting behavior in `replace` is deprecated and will be removed in a future version. To retain the old behavior, explicitly call `result.infer_objects(copy=False)`. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
-:   data["Diagnosis"] = data["Diagnosis"].replace("B", 0)
-#+end_example
-
 Unlike the other Alghoritms I implemented in this "ML from Scratch" repository,
 for the SVM I'll use a single class for training and predicting, instead of
 using separate functions for loss calculation, gradient descent and then predictions.
 #+name: svm
 #+begin_src python :python python3 :results output
 <<preprocess>>
-# SVM class
+# SVM class with Kernel trick
 class SVM:
-    def __init__(self, learning_rate=0.001, lambda_param=0.01, num_epochs=1000):
+    def __init__(self, learning_rate=0.001, lambda_param=0.01, num_epochs=1000, kernel="linear", degree=3, gamma=0.1):
         self.learning_rate = learning_rate
         self.lambda_param = lambda_param
         self.num_epochs = num_epochs
+        self.kernel = kernel
+        self.degree = degree
+        self.gamma = gamma
         self.weights = None
         self.bias = 0
         self.losses = []
+        self.X_train = None
     
+    # Define Kernel functions
+    def linear_kernel(self, x1, x2):
+        return np.dot(x1, x2)
+
+    def polynomial_kernel(self, x1, x2):
+        return (np.dot(x1, x2) + 1) ** self.degree
+
+    def rbf_kernel(self, x1, x2):
+        return np.exp(-self.gamma * np.linalg.norm(x1 - x2) ** 2)
+
+    # Apply kernel
+    def apply_kernel(self, X, Y=None):
+        if Y is None:
+            Y = X
+        n_samples = X.shape[0]
+        m_samples = Y.shape[0]
+        K = np.zeros((n_samples, m_samples))
+        for i in range(n_samples):
+            for j in range(m_samples):
+                if self.kernel == "linear":
+                    K[i, j] = self.linear_kernel(X[i], Y[j])
+                elif self.kernel == "poly":
+                    K[i, j] = self.polynomial_kernel(X[i], Y[j])
+                elif self.kernel == "rbf":
+                    K[i, j] = self.rbf_kernel(X[i], Y[j])
+
+        return K 
+
+    # Hinge loss definition
     def hinge_loss(self, X, y):
         n_samples = X.shape[0]
         distances = 1 - y * (np.dot(X, self.weights) - self.bias)
@@ -147,9 +175,18 @@ class SVM:
         hinge_loss = self.lambda_param * np.dot(self.weights, self.weights) + np.mean(distances)
         return hinge_loss
     
+    # Training :)
     def train(self, X, y):
         n_samples, n_features = X.shape
-        self.weights = np.zeros(n_features)
+        self.X_train = X
+        if self.kernel == "linear":
+            self.weights = np.zeros(n_features)
+        else:
+            self.weights = np.zeros(n_samples) # for non-linear kernels
+
+        # Apply kernel (if necessary)
+        if self.kernel != "linear":
+            X = self.apply_kernel(X)
         
         # Converting labels to -1 and 1
         y_ = np.where(y <= 0, -1, 1)
@@ -170,6 +207,10 @@ class SVM:
                 print(f"Epoch: {epoch}, Loss: {loss:.4f}")
 
     def predict(self, X):
+        if isinstance(X, pd.DataFrame):
+            X = X.to_numpy()
+        if self.kernel != "linear":
+            X = self.apply_kernel(X, self.X_train) # Kernel between test and train
         approx = np.dot(X, self.weights) - self.bias
         return np.sign(approx)
 
@@ -185,7 +226,7 @@ Now,let's test the model!
 #+begin_src python :python python3 :results output
 <<svm>>
 # Model initialization
-svm_classifier = SVM(learning_rate=0.001, num_epochs=1000)
+svm_classifier = SVM(learning_rate=0.001, num_epochs=1000, kernel="linear")
 
 # Train the model
 svm_classifier.train(X_train, y_train) 
@@ -199,7 +240,7 @@ svm_classifier.evaluate(X_test, y_test)
 
 #+RESULTS: test
 #+begin_example
-/tmp/babel-RxHvao/python-NCZjhi:22: FutureWarning: Downcasting behavior in `replace` is deprecated and will be removed in a future version. To retain the old behavior, explicitly call `result.infer_objects(copy=False)`. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+/tmp/babel-vtABmf/python-ZDageF:22: FutureWarning: Downcasting behavior in `replace` is deprecated and will be removed in a future version. To retain the old behavior, explicitly call `result.infer_objects(copy=False)`. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
   data["Diagnosis"] = data["Diagnosis"].replace("B", 1)
 Epoch: 0, Loss: 0.1850
 Epoch: 100, Loss: 0.0814
