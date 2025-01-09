@@ -75,19 +75,19 @@ to standardize the data before passing them to the model.
   def train_test_split(X, y, test_size=0.2, random_state=None):
       if random_state:
           np.random.seed(random_state)
-        
+
       # Shuffle data
       indices = np.arange(X.shape[0])
       np.random.shuffle(indices)
-    
+
       X_shuffled = X.iloc[indices]
       y_shuffled = y.iloc[indices]
-    
+
       split_index = int(X.shape[0] * (1 - test_size))
 
       X_train, X_test = X_shuffled[:split_index], X_shuffled[split_index:]
       y_train, y_test = y_shuffled[:split_index], y_shuffled[split_index:]
-    
+
       return X_train, X_test, y_train, y_test
 
   # Create a custom Standard Scaler Class (To replicate the scikit-learn class "StandardScaler")
@@ -95,14 +95,14 @@ to standardize the data before passing them to the model.
       def __init__(self):
           self.mean = None
           self.std = None
-        
+
       def fit(self, X):
           self.mean = np.mean(X, axis=0)
           self.std = np.std(X, axis=0)
 
       def transform(self, X):
           return (X - self.mean) / self.std
-    
+
       def fit_transform(self, X):
           self.fit(X)
           return self.transform(X)
@@ -117,7 +117,7 @@ to standardize the data before passing them to the model.
   # Ensure they are numerical
   X_train = np.array(X_train.astype(float))
   y_train = np.array(y_train.astype(int))
-#+end_src
+  #+end_src
 
 Unlike the other Alghoritms I implemented in this "ML from Scratch" repository,
 for the SVM I'll use a single class for training and predicting, instead of
@@ -138,7 +138,7 @@ using separate functions for loss calculation, gradient descent and then predict
           self.bias = 0
           self.losses = []
           self.X_train = None
-        
+
       # Define Kernel functions
       def linear_kernel(self, x1, x2):
           return np.dot(x1, x2)
@@ -174,7 +174,7 @@ using separate functions for loss calculation, gradient descent and then predict
           distances = np.maximum(0, distances)
           hinge_loss = self.lambda_param * np.dot(self.weights, self.weights) + np.mean(distances)
           return hinge_loss
-    
+
       # Training :)
       def train(self, X, y):
           n_samples, n_features = X.shape
@@ -187,10 +187,10 @@ using separate functions for loss calculation, gradient descent and then predict
           # Apply kernel (if necessary)
           if self.kernel != "linear":
               X = self.apply_kernel(X)
-            
+
           # Converting labels to -1 and 1
           y_ = np.where(y <= 0, -1, 1)
-        
+
           for epoch in range(self.num_epochs):
               for i, x_i in enumerate(X):
                   condition = (y_[i] * (np.dot(x_i, self.weights) - self.bias)) >= 1
@@ -270,10 +270,18 @@ As usual, let's create the same SVM model in C.
   #define MAX_FEATURES 30
   #define MAX_SAMPLES 600
 
+  // Dataset structure
   typedef struct Sample{
     double features[MAX_FEATURES];
     int label; 
   } Sample;
+
+  // Standard Scaler structure
+  typedef struct StandardScaler{
+    double* mean;
+    double* std;
+    int num_features;
+  } StandardScaler;
 
   // Name: load_data
   // Purpose: Load a dataset csv file.
@@ -335,20 +343,20 @@ As usual, let's create the same SVM model in C.
     int total_samples = load_data("wdbc.data", dataset, MAX_SAMPLES);
 
     if(total_samples > 0){
-      printf("Loaded %d samples.\n", total_samples);
+    printf("Loaded %d samples.\n", total_samples);
 
-      for(int i = 0; i < 5 && i < total_samples; i++){
-        printf("Sample %d:\n", i+1);
-        printf("Label: %d\n", dataset[i].label);
-        printf("Features: ");
-        for(int j = 0; j < MAX_FEATURES; j++){
-          printf("%.2f ", dataset[i].features[j]);
-        }
-        printf("\n");
-      }
+    for(int i = 0; i < 5 && i < total_samples; i++){
+    printf("Sample %d:\n", i+1);
+    printf("Label: %d\n", dataset[i].label);
+    printf("Features: ");
+    for(int j = 0; j < MAX_FEATURES; j++){
+    printf("%.2f ", dataset[i].features[j]);
+    }
+    printf("\n");
+    }
     }
     return 0;
-  }*/
+    }*/
 #+end_src
 
 #+RESULTS: import_data
@@ -371,7 +379,7 @@ Label: -1
 Features: 20.29 14.34 135.10 1297.00 0.10 0.13 0.20 0.10 0.18 0.06 0.76 0.78 5.44 94.44 0.01 0.02 0.06 0.02 0.02 0.01 22.54 16.67 152.20 1575.00 0.14 0.20 0.40 0.16 0.24 0.08
 #+end_example
 
-2) Preprocess the data and define helper functions
+2) Preprocess the data and define some helper functions.
 #+name: preprocess_data
 #+begin_src C :main no :results output :noweb yes
   <<import_data>>
@@ -411,7 +419,7 @@ Features: 20.29 14.34 135.10 1297.00 0.10 0.13 0.20 0.10 0.18 0.06 0.76 0.78 5.4
 
     // Shuffle the indices
     srand(random_state);
-    shuffle(indices, num_rows);
+    shuffle(indices, num_rows, 1618);
 
     int split_index = (int)(num_rows * (1 - test_size));
 
@@ -434,6 +442,413 @@ Features: 20.29 14.34 135.10 1297.00 0.10 0.13 0.20 0.10 0.18 0.06 0.76 0.78 5.4
   } 
   
 
+  // Name: compute_mean_std
+  // Purpose: Find the mean and standard deviation.
+  // Return: void
+  // Arguments: input data X,
+  //            number of rows,
+  //            number of features,
+  //            mean array
+  //            std array
+  void compute_mean_std(const double* X, int num_rows, int num_features, double* mean, double* std){
+    // Compute mean
+    for(int j = 0; j<num_features; j++){
+      mean[j] = 0.0;
+      for(int i = 0; i<num_rows; i++){
+        mean[j] += X[i * num_features + j];
+      }
+      mean[j] /= num_rows;
+    }
+
+    // Compute standard deviation
+    for(int j = 0; j<num_features; j++){
+      std[j] = 0.0;
+      for(int i = 0; i<num_rows; i++){
+        double diff = X[i * num_features + j] - mean[j];
+        std[j] += diff * diff;
+      }
+      std[j] = sqrt(std[j] / num_rows);
+    }
+  }
+
+  // Name: scaler_fit
+  // Purpose: Fit the scaler (comp mean and std).
+  // Return: void
+  // Arguments: scaler struct, 
+  //            input data X, 
+  //            number of rows,
+  //            number of features
+  void scaler_fit(StandardScaler* scaler, const double* X, int num_rows, int num_features){
+    scaler->mean = (double*)malloc(num_features * sizeof(double));
+    scaler->std = (double*)malloc(num_features * sizeof(double));
+    scaler->num_features = num_features;
+
+    compute_mean_std(X, num_rows, num_features, scaler->mean, scaler->std);
+  }
+
+  // Name: scaler_transform
+  // Purpose: Transform the data.
+  // Return: void
+  // Arguments: scaler struct, 
+  //            input data X, 
+  //            number of rows
+  void scaler_transform(const StandardScaler* scaler, double* X, int num_rows){
+    for(int i = 0; i<num_rows; i++){
+      for(int j = 0; j<scaler->num_features; j++){
+        X[i * scaler->num_features + j] = (X[i * scaler->num_features + j] - scaler->mean[j]) / scaler->std[j];
+      }
+    }
+  }
+ 
+  // Name: scaler_fit_transform
+  // Purpose: Fit and transform the data in one step.
+  // Return: void
+  // Arguments: scaler struct, 
+  //            input data X, 
+  //            number of rows,
+  //            number of features
+  void scaler_fit_transform(StandardScaler* scaler, double* X, int num_rows, int num_features){
+    scaler_fit(scaler, X, num_rows, num_features);
+    scaler_transform(scaler, X, num_rows);
+  }
+
+  // Name: scaler_free
+  // Purpose: Free the allocated memory.
+  // Return: void
+  // Arguments: scaler struct.
+  void scalar_free(StandardScaler* scaler){
+    free(scaler->mean);
+    free(scaler->std);
+  }
 #+end_src
 
 #+RESULTS: preprocess_data
+
+3) Create remaining helper functions (Similar to NumPy in Python)
+#+name: math
+#+begin_src C :main no :results output :noweb yes
+  <<preprocess_data>>
+    // Name: dot_product
+    // Purpose: Compute the dot product of two vectors.
+    // Return: double
+    // Arguments: vector 1,
+    //            vector 2,
+    //            size of the vectors
+  double dot_product(const double* vec1, const double* vec2, int size){
+    double result = 0.0f;
+    for(int i = 0; i<size; i++){
+      result += vec1[i] * vec2[i];
+    }
+    return result;
+    }
+
+  // Name: euclidean_norm
+  // Purpose: Compute Eucledian norm.
+  // Return: double
+  // Arguments: vector,
+  //            size of the vector
+  double euclidean_norm(const double* vec, int size){
+    double sum = 0.0f;
+    for(int i = 0; i<size; i++){
+      sum += vec[i] * vec[i];
+    }
+    return sqrt(sum);
+  }
+
+  // Name: power
+  // Purpose: Exponentiate.
+  // Return: double
+  // Arguments: base,
+  //            exponent,
+  double power(double base, int exponent){
+    double result = 1.0f;
+    for(int i = 0; i<exponent; i++){
+      result *= base;
+    }
+    return result;
+  }
+
+  // Name: sign
+  // Purpose: Sign function
+  // Return: int
+  // Arguments: value.
+  int sign(double value){
+    if(value > 0) return 1;
+    else if (value < 0) return -1;
+    return 0;
+  }
+
+  // Name: max
+  // Purpose: Return maximum of two values.
+  // Return: double
+  // Arguments: value 1,
+  //            value 2,
+  double max(double a, double b){
+    return (a > b) ? a : b;
+  }
+    #+end_src
+
+#+RESULTS: math
+
+4) SVM algorithm
+#+name: svm_C
+#+begin_src C :main no :results output :noweb yes
+  <<math>>
+    // Kernel functions
+
+    // Name: linear_kernel
+    // Purpose: Apply linear kernel.
+    // Return: double
+    // Arguments: vector 1,
+    //            vector 2,
+    //            size of the vectors
+  double linear_kernel(const double* vec1, const double* vec2, int size){
+    return dot_product(vec1, vec2, size);
+    }
+
+  // Name: polynomial_kernel
+  // Purpose: Apply polynomial kernel.
+  // Return: double
+  // Arguments: vector 1,
+  //            vector 2,
+  //            size of the vectors,
+  //            degree
+  double polynomial_kernel(const double* vec1, const double* vec2, int size, int degree){
+    double dot = dot_product(vec1, vec2, size);
+    return power(dot + 1, degree);
+  }
+
+  // Name: rbf_kernel
+  // Purpose: Apply Gaussian kernel.
+  // Return: double
+  // Arguments: vector 1,
+  //            vector 2,
+  //            size of the vectors,
+  //            gamma parameter
+  double rbf_kernel(const double* vec1, const double* vec2, int size, double gamma){
+    double norm_diff = 0.0f;
+    for(int i = 0; i<size; i++){
+      double diff = vec1[i] - vec2[i];
+      norm_diff += diff * diff;
+    }
+    return exp(-gamma * norm_diff);
+  }
+
+  // Name: hinge_loss
+  // Purpose: Compute the hinge loss function.
+  // Return: double
+  // Arguments: weights,
+  //            bias,
+  //            input data X
+  //            target y
+  //            number of samples (rows)
+  //            number of features
+  //            lambda parameter
+  double hinge_loss(const double* weights, double bias, const double* X, const double* y, int num_samples, int num_features, double lambda_param){
+    double loss = 0.0;
+
+    for(int i = 0; i<num_samples; i++){
+      double margin = y[i] * (dot_product(weights, &X[i * num_features], num_features) - bias);
+      loss += max(0, 1-margin);
+    }
+
+    // Add regularization term
+    double regularization = 0.0;
+    for(int j = 0; j<num_features; j++){
+      regularization += weights[j] * weights[j];
+    }
+    regularization *= lambda_param;
+
+    return regularization + loss / num_samples;
+  }
+
+  // Name: gradient_update
+  // Purpose: Gradient descent process.
+  // Return: void
+  // Arguments: weights,
+  //            bias,
+  //            input data X
+  //            target y
+  //            number of samples (rows)
+  //            number of features
+  //            lambda parameter
+  //            learning rate
+  void gradient_update(double* weights, double* bias, const double* X, const double* y, int num_samples, int num_features, double lambda_param, double lr){
+    double* weight_grad = calloc(num_features, sizeof(double));
+    double bias_grad = 0.0f;
+
+    for(int i = 0; i<num_samples; i++){
+      double margin = y[i] * (dot_product(weights, &X[i * num_features], num_features) - *bias);
+
+      if(margin < 1){
+        // Update gradient
+        for(int j = 0; j<num_features; j++){
+          weight_grad[j] += -y[i] * X[i * num_features + j];
+        }
+        bias_grad += -y[i];
+      }
+    }
+
+    // Regularization term for weights
+    for(int j = 0; j<num_features; j++){
+      weight_grad[j] += 2 * lambda_param * weights[j];
+    }
+
+    // Update weights and bias
+    for(int j = 0; j<num_features; j++){
+      weights[j] -= lr * weight_grad[j];
+    }
+    ,*bias -= lr * bias_grad;
+
+    free(weight_grad);
+  }
+
+  // Name: predict_sample
+  // Purpose: Predict class for a single sample.
+  // Return: int
+  // Arguments: weights,
+  //            bias,
+  //            sample,
+  //            number of features
+  int predict_sample(const double* weights, double bias, const double* sample, int num_features){
+    double result = dot_product(weights, sample, num_features) - bias;
+    return sign(result);
+  }
+
+  // Name: predict
+  // Purpose: Make predictions.
+  // Return: void
+  // Arguments: weights,
+  //            bias,
+  //            input data X,
+  //            predictions,
+  //            number of samples (rows)
+  //            number of features
+  void predict(const double* weights, double bias, const double* X, int* predictions, int num_samples, int num_features){
+    for(int i = 0; i<num_samples; i++){
+      predictions[i] = predict_sample(weights, bias, &X[i * num_features], num_features);
+    }
+  }
+
+  // Name: evaluate
+  // Purpose: Evaluate accuracy of the model.
+  // Return: double
+  // Arguments: predictions,X
+  //            target y,
+  //            number of samples (rows)
+  double evaluate(const int* predictions, const double* y, int num_samples){
+    int correct = 0;
+
+    for(int i = 0; i<num_samples; i++){
+      if(predictions[i] == (int)y[i])
+        correct++;
+    }
+    return (double)correct / num_samples * 100.0;
+  }
+
+  // Name: train
+  // Purpose: Training loop.
+  // Return: void
+  // Arguments: weights,
+  //            bias,
+  //            input data X,
+  //            target y,
+  //            number of samples (rows),
+  //            number of features,
+  //            lambda parameter,
+  //            learning rate,
+  //            number of epochs
+  void train(double* weights, double* bias, const double* X, const double* y, int num_samples, int num_features, double lambda_param, double lr, int num_epochs){
+    for(int epoch = 0; epoch<num_epochs; epoch++){
+      gradient_update(weights, bias, X, y, num_samples, num_features, lambda_param, lr);
+
+      if(epoch % 100 == 0){
+        double loss = hinge_loss(weights, *bias, X, y, num_samples, num_features, lambda_param);
+        printf("Epoch %d, Loss: %.4f\n", epoch, loss);
+      }
+    }
+  } 
+#+end_src
+
+#+RESULTS: svm_C
+
+5) Main function and testing
+#+begin_src C :main no :results output :noweb yes :tangle svm.c
+<<svm_C>>
+
+int main(){
+// Parameters
+const char* filename = "wdbc.data";
+const int max_samples = MAX_SAMPLES;
+const int num_features = MAX_FEATURES;
+const double test_size = 0.2;
+const double lambda_param = 0.01;
+const double lr = 0.001;
+const int num_epochs = 1000;
+
+// Allocate memory
+Sample dataset[MAX_SAMPLES];
+double* X = malloc(max_samples * num_features * sizeof(double));
+double* y = malloc(max_samples * sizeof(double));
+double* X_train = malloc(max_samples * num_features * sizeof(double));
+double* X_test = malloc(max_samples * num_features * sizeof(double));
+double* y_train = malloc(max_samples * sizeof(double));
+double* y_test = malloc(max_samples * sizeof(double));
+
+// Load the dataset
+int total_samples = load_data(filename, dataset, max_samples);
+if(total_samples <= 0){
+printf("Failed to load dataset.\n");
+return -1;
+}
+printf("Loaded %d samples.\n", total_samples);
+
+// Prepare the data
+for(int i = 0; i<total_samples; i++){
+for(int j = 0; j<num_features; j++){
+X[i * num_features + j] = dataset[i].features[j];
+}
+y[i] = dataset[i].label;
+}
+
+// Split the data
+int num_train_samples = (int)(total_samples * (1 - test_size));
+int num_test_samples = total_samples - num_train_samples;
+train_test_split(X, y, X_train, X_test, y_train, y_test, total_samples, num_features, test_size, 1618);
+
+// Standardize the data
+StandardScaler scaler; 
+scaler_fit_transform(&scaler, X_train, num_train_samples, num_features);
+scaler_transform(&scaler, X_test, num_test_samples);
+
+// Initialize weights and bias
+double* weights = calloc(num_features, sizeof(double));
+double bias = 0.0;
+
+// Train the model
+train(weights, &bias, X_train, y_train,num_train_samples, num_features, lambda_param, lr, num_epochs);
+
+// Make predictions
+int* predictions = malloc(num_test_samples * sizeof(int));
+predict(weights, bias, X_test, predictions, num_test_samples, num_features);
+
+// Evaluate the model
+double accuracy = evaluate(predictions, y_test, num_test_samples);
+printf("Model Accuracy: %.2f%%\n", accuracy);
+
+// Free allocated memory
+free(weights);
+free(predictions);
+free(X);
+free(y);
+free(X_train);
+free(X_test);
+free(y_train);
+free(y_test);
+scalar_free(&scaler);
+
+return 0;
+}
+#+end_src
+
+#+RESULTS:
