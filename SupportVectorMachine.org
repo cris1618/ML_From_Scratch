@@ -23,33 +23,33 @@ The dataset includes:
 The goal is to predict the diagnosis based on the input features. 
 #+name: data
 #+begin_src python :python python3 :results output
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import os
+  import numpy as np
+  import pandas as pd
+  import matplotlib.pyplot as plt
+  import os
 
-dir = os.getcwdb().decode('utf-8')
-file_path = os.path.join(dir, "Datasets/breast_cancer/wdbc.data")
+  dir = os.getcwdb().decode('utf-8')
+  file_path = os.path.join(dir, "Datasets/breast_cancer/wdbc.data")
 
-# Columns names
-columns = [
-    "ID", "Diagnosis", "Radius_mean", "Texture_mean", "Perimeter_mean", "Area_mean", "Smoothness_mean", 
-    "Compactness_mean", "Concavity_mean", "Concave_points_mean", "Symmetry_mean", "Fractal_dimension_mean",
-    "Radius_se", "Texture_se", "Perimeter_se", "Area_se", "Smoothness_se", "Compactness_se", "Concavity_se", 
-    "Concave_points_se", "Symmetry_se", "Fractal_dimension_se",
-    "Radius_worst", "Texture_worst", "Perimeter_worst", "Area_worst", "Smoothness_worst", 
-    "Compactness_worst", "Concavity_worst", "Concave_points_worst", "Symmetry_worst", "Fractal_dimension_worst"
-]
+  # Columns names
+  columns = [
+      "ID", "Diagnosis", "Radius_mean", "Texture_mean", "Perimeter_mean", "Area_mean", "Smoothness_mean", 
+      "Compactness_mean", "Concavity_mean", "Concave_points_mean", "Symmetry_mean", "Fractal_dimension_mean",
+      "Radius_se", "Texture_se", "Perimeter_se", "Area_se", "Smoothness_se", "Compactness_se", "Concavity_se", 
+      "Concave_points_se", "Symmetry_se", "Fractal_dimension_se",
+      "Radius_worst", "Texture_worst", "Perimeter_worst", "Area_worst", "Smoothness_worst", 
+      "Compactness_worst", "Concavity_worst", "Concave_points_worst", "Symmetry_worst", "Fractal_dimension_worst"
+  ]
 
-# Import the data
-data = pd.read_csv(file_path, sep=",", header=None, names=columns)
-data["Diagnosis"] = data["Diagnosis"].replace("M", -1)
-data["Diagnosis"] = data["Diagnosis"].replace("B", 1)
+  # Import the data
+  data = pd.read_csv(file_path, sep=",", header=None, names=columns)
+  data["Diagnosis"] = data["Diagnosis"].replace("M", -1)
+  data["Diagnosis"] = data["Diagnosis"].replace("B", 1)
 
-X = data.drop(["Diagnosis", "ID"], axis=1)
-y = data["Diagnosis"]
+  X = data.drop(["Diagnosis", "ID"], axis=1)
+  y = data["Diagnosis"]
 
-#print(data.head())
+  #print(data.head())
 #+end_src
 
 #+RESULTS: data
@@ -70,53 +70,53 @@ Since SVMs are sensitive to feature scaling, it's important
 to standardize the data before passing them to the model.
 #+name: preprocess
 #+begin_src python :python python3 :results output
-<<data>>
-# Create function to split the data (similar to scikit-learn train_test_split)
-def train_test_split(X, y, test_size=0.2, random_state=None):
-    if random_state:
-        np.random.seed(random_state)
+  <<data>>
+  # Create function to split the data (similar to scikit-learn train_test_split)
+  def train_test_split(X, y, test_size=0.2, random_state=None):
+      if random_state:
+          np.random.seed(random_state)
+        
+      # Shuffle data
+      indices = np.arange(X.shape[0])
+      np.random.shuffle(indices)
     
-    # Shuffle data
-    indices = np.arange(X.shape[0])
-    np.random.shuffle(indices)
+      X_shuffled = X.iloc[indices]
+      y_shuffled = y.iloc[indices]
     
-    X_shuffled = X.iloc[indices]
-    y_shuffled = y.iloc[indices]
-   
-    split_index = int(X.shape[0] * (1 - test_size))
+      split_index = int(X.shape[0] * (1 - test_size))
 
-    X_train, X_test = X_shuffled[:split_index], X_shuffled[split_index:]
-    y_train, y_test = y_shuffled[:split_index], y_shuffled[split_index:]
+      X_train, X_test = X_shuffled[:split_index], X_shuffled[split_index:]
+      y_train, y_test = y_shuffled[:split_index], y_shuffled[split_index:]
     
-    return X_train, X_test, y_train, y_test
+      return X_train, X_test, y_train, y_test
 
-# Create a custom Standard Scaler Class (To replicate the scikit-learn class "StandardScaler")
-class StandardScaler:
-    def __init__(self):
-        self.mean = None
-        self.std = None
+  # Create a custom Standard Scaler Class (To replicate the scikit-learn class "StandardScaler")
+  class StandardScaler:
+      def __init__(self):
+          self.mean = None
+          self.std = None
+        
+      def fit(self, X):
+          self.mean = np.mean(X, axis=0)
+          self.std = np.std(X, axis=0)
+
+      def transform(self, X):
+          return (X - self.mean) / self.std
     
-    def fit(self, X):
-        self.mean = np.mean(X, axis=0)
-        self.std = np.std(X, axis=0)
+      def fit_transform(self, X):
+          self.fit(X)
+          return self.transform(X)
 
-    def transform(self, X):
-        return (X - self.mean) / self.std
-    
-    def fit_transform(self, X):
-        self.fit(X)
-        return self.transform(X)
+  # Apply to the dataset
+  scaler = StandardScaler()
+  X_scaled = scaler.fit_transform(X)
 
-# Apply to the dataset
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+  # Split the data
+  X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, 0.2, random_state=1618)
 
-# Split the data
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, 0.2, random_state=1618)
-
-# Ensure they are numerical
-X_train = np.array(X_train.astype(float))
-y_train = np.array(y_train.astype(int))
+  # Ensure they are numerical
+  X_train = np.array(X_train.astype(float))
+  y_train = np.array(y_train.astype(int))
 #+end_src
 
 Unlike the other Alghoritms I implemented in this "ML from Scratch" repository,
@@ -124,118 +124,118 @@ for the SVM I'll use a single class for training and predicting, instead of
 using separate functions for loss calculation, gradient descent and then predictions.
 #+name: svm
 #+begin_src python :python python3 :results output
-<<preprocess>>
-# SVM class with Kernel trick
-class SVM:
-    def __init__(self, learning_rate=0.001, lambda_param=0.01, num_epochs=1000, kernel="linear", degree=3, gamma=0.1):
-        self.learning_rate = learning_rate
-        self.lambda_param = lambda_param
-        self.num_epochs = num_epochs
-        self.kernel = kernel
-        self.degree = degree
-        self.gamma = gamma
-        self.weights = None
-        self.bias = 0
-        self.losses = []
-        self.X_train = None
-    
-    # Define Kernel functions
-    def linear_kernel(self, x1, x2):
-        return np.dot(x1, x2)
-
-    def polynomial_kernel(self, x1, x2):
-        return (np.dot(x1, x2) + 1) ** self.degree
-
-    def rbf_kernel(self, x1, x2):
-        return np.exp(-self.gamma * np.linalg.norm(x1 - x2) ** 2)
-
-    # Apply kernel
-    def apply_kernel(self, X, Y=None):
-        if Y is None:
-            Y = X
-        n_samples = X.shape[0]
-        m_samples = Y.shape[0]
-        K = np.zeros((n_samples, m_samples))
-        for i in range(n_samples):
-            for j in range(m_samples):
-                if self.kernel == "linear":
-                    K[i, j] = self.linear_kernel(X[i], Y[j])
-                elif self.kernel == "poly":
-                    K[i, j] = self.polynomial_kernel(X[i], Y[j])
-                elif self.kernel == "rbf":
-                    K[i, j] = self.rbf_kernel(X[i], Y[j])
-
-        return K 
-
-    # Hinge loss definition
-    def hinge_loss(self, X, y):
-        n_samples = X.shape[0]
-        distances = 1 - y * (np.dot(X, self.weights) - self.bias)
-        distances = np.maximum(0, distances)
-        hinge_loss = self.lambda_param * np.dot(self.weights, self.weights) + np.mean(distances)
-        return hinge_loss
-    
-    # Training :)
-    def train(self, X, y):
-        n_samples, n_features = X.shape
-        self.X_train = X
-        if self.kernel == "linear":
-            self.weights = np.zeros(n_features)
-        else:
-            self.weights = np.zeros(n_samples) # for non-linear kernels
-
-        # Apply kernel (if necessary)
-        if self.kernel != "linear":
-            X = self.apply_kernel(X)
+  <<preprocess>>
+  # SVM class with Kernel trick
+  class SVM:
+      def __init__(self, learning_rate=0.001, lambda_param=0.01, num_epochs=1000, kernel="linear", degree=3, gamma=0.1):
+          self.learning_rate = learning_rate
+          self.lambda_param = lambda_param
+          self.num_epochs = num_epochs
+          self.kernel = kernel
+          self.degree = degree
+          self.gamma = gamma
+          self.weights = None
+          self.bias = 0
+          self.losses = []
+          self.X_train = None
         
-        # Converting labels to -1 and 1
-        y_ = np.where(y <= 0, -1, 1)
-       
-        for epoch in range(self.num_epochs):
-            for i, x_i in enumerate(X):
-                condition = (y_[i] * (np.dot(x_i, self.weights) - self.bias)) >= 1
-                if condition:
-                    self.weights -= self.learning_rate * (2 * self.lambda_param * self.weights)
-                else:
-                    self.weights -= self.learning_rate * (2 * self.lambda_param * self.weights - np.dot(x_i, y_[i]))
-                    self.bias -= self.learning_rate * y_[i]
+      # Define Kernel functions
+      def linear_kernel(self, x1, x2):
+          return np.dot(x1, x2)
 
-            # Track loss at each epoch
-            loss = self.hinge_loss(X, y_)
-            self.losses.append(loss)
-            if epoch % 100 == 0:
-                print(f"Epoch: {epoch}, Loss: {loss:.4f}")
+      def polynomial_kernel(self, x1, x2):
+          return (np.dot(x1, x2) + 1) ** self.degree
 
-    def predict(self, X):
-        if isinstance(X, pd.DataFrame):
-            X = X.to_numpy()
-        if self.kernel != "linear":
-            X = self.apply_kernel(X, self.X_train) # Kernel between test and train
-        approx = np.dot(X, self.weights) - self.bias
-        return np.sign(approx)
+      def rbf_kernel(self, x1, x2):
+          return np.exp(-self.gamma * np.linalg.norm(x1 - x2) ** 2)
 
-    def evaluate(self, X, y):
-        y_pred = self.predict(X)
-        accuracy = np.mean(y_pred == np.where(y <= 0, -1, 1))
-        print(f"Model Accuracy: {accuracy * 100:.2f}%")
-        return accuracy
-  #+end_src
+      # Apply kernel
+      def apply_kernel(self, X, Y=None):
+          if Y is None:
+              Y = X
+              n_samples = X.shape[0]
+              m_samples = Y.shape[0]
+              K = np.zeros((n_samples, m_samples))
+          for i in range(n_samples):
+              for j in range(m_samples):
+                  if self.kernel == "linear":
+                      K[i, j] = self.linear_kernel(X[i], Y[j])
+                  elif self.kernel == "poly":
+                      K[i, j] = self.polynomial_kernel(X[i], Y[j])
+                  elif self.kernel == "rbf":
+                      K[i, j] = self.rbf_kernel(X[i], Y[j])
+
+          return K 
+
+      # Hinge loss definition
+      def hinge_loss(self, X, y):
+          n_samples = X.shape[0]
+          distances = 1 - y * (np.dot(X, self.weights) - self.bias)
+          distances = np.maximum(0, distances)
+          hinge_loss = self.lambda_param * np.dot(self.weights, self.weights) + np.mean(distances)
+          return hinge_loss
+    
+      # Training :)
+      def train(self, X, y):
+          n_samples, n_features = X.shape
+          self.X_train = X
+          if self.kernel == "linear":
+              self.weights = np.zeros(n_features)
+          else:
+              self.weights = np.zeros(n_samples) # for non-linear kernels
+
+          # Apply kernel (if necessary)
+          if self.kernel != "linear":
+              X = self.apply_kernel(X)
+            
+          # Converting labels to -1 and 1
+          y_ = np.where(y <= 0, -1, 1)
+        
+          for epoch in range(self.num_epochs):
+              for i, x_i in enumerate(X):
+                  condition = (y_[i] * (np.dot(x_i, self.weights) - self.bias)) >= 1
+                  if condition:
+                      self.weights -= self.learning_rate * (2 * self.lambda_param * self.weights)
+                  else:
+                      self.weights -= self.learning_rate * (2 * self.lambda_param * self.weights - np.dot(x_i, y_[i]))
+                      self.bias -= self.learning_rate * y_[i]
+
+              # Track loss at each epoch
+              loss = self.hinge_loss(X, y_)
+              self.losses.append(loss)
+              if epoch % 100 == 0:
+                  print(f"Epoch: {epoch}, Loss: {loss:.4f}")
+
+      def predict(self, X):
+          if isinstance(X, pd.DataFrame):
+              X = X.to_numpy()
+          if self.kernel != "linear":
+              X = self.apply_kernel(X, self.X_train) # Kernel between test and train
+              approx = np.dot(X, self.weights) - self.bias
+          return np.sign(approx)
+
+      def evaluate(self, X, y):
+          y_pred = self.predict(X)
+          accuracy = np.mean(y_pred == np.where(y <= 0, -1, 1))
+          print(f"Model Accuracy: {accuracy * 100:.2f}%")
+          return accuracy
+#+end_src
 
 Now,let's test the model!
 #+name: test
 #+begin_src python :python python3 :results output
-<<svm>>
-# Model initialization
-svm_classifier = SVM(learning_rate=0.001, num_epochs=1000, kernel="linear")
+  <<svm>>
+  # Model initialization
+  svm_classifier = SVM(learning_rate=0.001, num_epochs=1000, kernel="linear")
 
-# Train the model
-svm_classifier.train(X_train, y_train) 
+  # Train the model
+  svm_classifier.train(X_train, y_train) 
 
-# Test the model
-y_pred = svm_classifier.predict(X_test)
+  # Test the model
+  y_pred = svm_classifier.predict(X_test)
 
-# Evaluate the model
-svm_classifier.evaluate(X_test, y_test)
+  # Evaluate the model
+  svm_classifier.evaluate(X_test, y_test)
 #+end_src
 
 #+RESULTS: test
@@ -256,3 +256,184 @@ Model Accuracy: 97.37%
 #+end_example
 
 ** C Code
+As usual, let's create the same SVM model in C.
+1) Import the data
+#+name: import_data
+#+begin_src C :main no :results output :noweb yes
+  #include <stdio.h>
+  #include <stdlib.h>
+  #include <string.h>
+  #include <ctype.h>
+  #include <math.h>
+
+  // Define dimensions
+  #define MAX_FEATURES 30
+  #define MAX_SAMPLES 600
+
+  typedef struct Sample{
+    double features[MAX_FEATURES];
+    int label; 
+  } Sample;
+
+  // Name: load_data
+  // Purpose: Load a dataset csv file.
+  // Return: int, number of line 
+  // Arguments: Filename, Struct to store data, max number of samples.
+  int load_data(const char* filename, Sample* dataset, int max_samples){
+    FILE* file = fopen(filename, "r");
+    if(!file){
+      perror("Failed to open file");
+      return -1;
+    }
+
+    char line[1024];
+    int sample_count = 0;
+
+    while(fgets(line, sizeof(line), file)){
+      if(sample_count >= max_samples){
+        printf("Maximum sample limit reached.\n");
+        break;
+      }
+
+      // Parse ID (ignore) and label
+      char* token = strtok(line, ",");
+      token = strtok(NULL, ","); // Skip ID
+
+      // Convert "M" and "B" to -1 and 1
+      if(strcmp(token, "M") == 0){
+        dataset[sample_count].label = -1;
+      } else if(strcmp(token, "B") == 0){
+        dataset[sample_count].label = 1;
+      } else {
+        printf("Invalid label at line %d\n", sample_count + 1);
+        fclose(file);
+        return -1;
+      }
+
+      // Parse features
+      int feature_index = 0;
+      while((token = strtok(NULL, ",")) != NULL && feature_index < MAX_FEATURES){
+        dataset[sample_count].features[feature_index++] = atof(token);
+      }
+
+      if(feature_index != MAX_FEATURES){
+        printf("Incomplete features at line %d\n", sample_count + 1);
+        fclose(file);
+        return -1;
+      }
+
+      sample_count++;
+    }
+
+    fclose(file);
+    return sample_count;
+  }
+  
+  // Test the function
+  /*int main(){
+    Sample dataset[MAX_SAMPLES];
+    int total_samples = load_data("wdbc.data", dataset, MAX_SAMPLES);
+
+    if(total_samples > 0){
+      printf("Loaded %d samples.\n", total_samples);
+
+      for(int i = 0; i < 5 && i < total_samples; i++){
+        printf("Sample %d:\n", i+1);
+        printf("Label: %d\n", dataset[i].label);
+        printf("Features: ");
+        for(int j = 0; j < MAX_FEATURES; j++){
+          printf("%.2f ", dataset[i].features[j]);
+        }
+        printf("\n");
+      }
+    }
+    return 0;
+  }*/
+#+end_src
+
+#+RESULTS: import_data
+#+begin_example
+Loaded 569 samples.
+Sample 1:
+Label: -1
+Features: 17.99 10.38 122.80 1001.00 0.12 0.28 0.30 0.15 0.24 0.08 1.09 0.91 8.59 153.40 0.01 0.05 0.05 0.02 0.03 0.01 25.38 17.33 184.60 2019.00 0.16 0.67 0.71 0.27 0.46 0.12 
+Sample 2:
+Label: -1
+Features: 20.57 17.77 132.90 1326.00 0.08 0.08 0.09 0.07 0.18 0.06 0.54 0.73 3.40 74.08 0.01 0.01 0.02 0.01 0.01 0.00 24.99 23.41 158.80 1956.00 0.12 0.19 0.24 0.19 0.28 0.09 
+Sample 3:
+Label: -1
+Features: 19.69 21.25 130.00 1203.00 0.11 0.16 0.20 0.13 0.21 0.06 0.75 0.79 4.58 94.03 0.01 0.04 0.04 0.02 0.02 0.00 23.57 25.53 152.50 1709.00 0.14 0.42 0.45 0.24 0.36 0.09 
+Sample 4:
+Label: -1
+Features: 11.42 20.38 77.58 386.10 0.14 0.28 0.24 0.11 0.26 0.10 0.50 1.16 3.44 27.23 0.01 0.07 0.06 0.02 0.06 0.01 14.91 26.50 98.87 567.70 0.21 0.87 0.69 0.26 0.66 0.17 
+Sample 5:
+Label: -1
+Features: 20.29 14.34 135.10 1297.00 0.10 0.13 0.20 0.10 0.18 0.06 0.76 0.78 5.44 94.44 0.01 0.02 0.06 0.02 0.02 0.01 22.54 16.67 152.20 1575.00 0.14 0.20 0.40 0.16 0.24 0.08
+#+end_example
+
+2) Preprocess the data and define helper functions
+#+name: preprocess_data
+#+begin_src C :main no :results output :noweb yes
+  <<import_data>>
+    // Name: shuffle
+    // Purpose: Shuffle indices.
+    // Return: void
+    // Arguments: indices,
+    //            Number of rows (total number of indices to shuffle),
+    //            Random State.
+  void shuffle(int* indices, int num_rows, int random_state){
+    srand(random_state);
+    for(int i = num_rows - 1; i > 0; i--){
+      int j = rand() % (i+1);
+      int temp = indices[i];
+      indices[i] = indices[j];
+      indices[j] = temp;
+    }
+    }
+
+  // Name: train_test_split
+  // Purpose: Split the data for training and for testing.
+  // Return: void
+  // Arguments: X to split,
+  //            y to split,
+  //            X_train, X_test, y_train, y_test (Outputs),
+  //            Number of rows (Samples),
+  //            Number of features,
+  //            Test size,
+  //            Random State.
+  void train_test_split(double* X, double* y, double* X_train, double* X_test, double* y_train, double* y_test,
+                        int num_rows, int num_features, double test_size, int random_state){
+ 
+    int indices[num_rows];
+    for(int i = 0; i < num_rows; i++){
+      indices[i] = i;
+    }
+
+    // Shuffle the indices
+    srand(random_state);
+    shuffle(indices, num_rows);
+
+    int split_index = (int)(num_rows * (1 - test_size));
+
+    // Split the data
+    for(int i = 0; i<split_index; i++){
+      int idx = indices[i];
+      for(int j = 0; j<num_features; j++){
+        X_train[i * num_features + j] = X[idx * num_features + j];
+      }
+      y_train[i] = y[idx];
+    }
+
+    for(int i = split_index; i<num_rows; i++){
+      int idx = indices[i];
+      for(int j = 0; j<num_features; j++){
+        X_test[(i - split_index) * num_features + j] = X[idx * num_features + j];
+      }
+      y_test[i - split_index] = y[idx];
+    }
+  } 
+  
+
+#+end_src
+
+#+RESULTS: preprocess_data
