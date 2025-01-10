@@ -14,17 +14,17 @@ that maximizes the margin between two classes in feature space.
 =Key Steps=
 
 1. *Data Preprocessing*
-   - Scale features using **standardization** to ensure all dimensions have equal importance.
+   - Scale features using =standardization= to ensure all dimensions have equal importance.
    - Convert labels to \(-1\) and \(1\) for hinge loss compatibility.
 
 2. *Kernel Trick*
    - If the data is not linearly separable, use kernel functions to map it to a higher-dimensional space:
-     - **Linear Kernel**: \( K(x, x') = x \cdot x' \)
-     - **Polynomial Kernel**: \( K(x, x') = (x \cdot x' + 1)^d \)
-     - **RBF Kernel**: \( K(x, x') = \exp(-\gamma \|x - x'\|^2) \)
+     - *Linear Kernel*: \( K(x, x') = x \cdot x' \)
+     - *Polynomial Kernel*: \( K(x, x') = (x \cdot x' + 1)^d \)
+     - *RBF Kernel*: \( K(x, x') = \exp(-\gamma \|x - x'\|^2) \)
 
 3. *Loss Function*
-   - Minimize the **hinge loss** to find the best separating hyperplane:
+   - Minimize the =hinge loss= to find the best separating hyperplane:
      \[
      L(w, b) = \lambda \|w\|^2 + \frac{1}{n} \sum_{i=1}^{n} \max(0, 1 - y_i (w \cdot x_i - b))
      \]
