@@ -258,7 +258,7 @@ using separate functions for loss calculation, gradient descent and then predict
           return accuracy
 #+end_src
 
-Now,let's test the model!
+Now, let's test the model!
 #+name: test
 #+begin_src python :python python3 :results output
   <<svm>>
@@ -294,7 +294,7 @@ Model Accuracy: 97.37%
 
 ** C Code
 As usual, let's create the same SVM model in C.
-1) Import the data
+- Import the data.
 #+name: import_data
 #+begin_src C :main no :results output :noweb yes
   #include <stdio.h>
@@ -416,7 +416,7 @@ Label: -1
 Features: 20.29 14.34 135.10 1297.00 0.10 0.13 0.20 0.10 0.18 0.06 0.76 0.78 5.44 94.44 0.01 0.02 0.06 0.02 0.02 0.01 22.54 16.67 152.20 1575.00 0.14 0.20 0.40 0.16 0.24 0.08
 #+end_example
 
-2) Preprocess the data and define some helper functions.
+- Preprocess the data and define some helper functions.
 #+name: preprocess_data
 #+begin_src C :main no :results output :noweb yes
   <<import_data>>
@@ -561,7 +561,7 @@ Features: 20.29 14.34 135.10 1297.00 0.10 0.13 0.20 0.10 0.18 0.06 0.76 0.78 5.4
 
 #+RESULTS: preprocess_data
 
-3) Create remaining helper functions (Similar to NumPy in Python)
+- Create remaining helper functions (Similar to NumPy in Python).
 #+name: math
 #+begin_src C :main no :results output :noweb yes
   <<preprocess_data>>
@@ -627,7 +627,7 @@ Features: 20.29 14.34 135.10 1297.00 0.10 0.13 0.20 0.10 0.18 0.06 0.76 0.78 5.4
 
 #+RESULTS: math
 
-4) SVM algorithm
+- SVM algorithm implementation.
 #+name: svm_C
 #+begin_src C :main no :results output :noweb yes
   <<math>>
@@ -809,7 +809,7 @@ Features: 20.29 14.34 135.10 1297.00 0.10 0.13 0.20 0.10 0.18 0.06 0.76 0.78 5.4
 
 #+RESULTS: svm_C
 
-5) Main function and testing
+- Main function and testing.
 #+begin_src C :main no :results output :noweb yes :tangle svm.c
   <<svm_C>>
 
