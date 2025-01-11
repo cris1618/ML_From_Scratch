@@ -125,19 +125,37 @@ Create the Decision Tree regressor model.
 <<stand>>
 # Decison Tree class
 class DecisionTreeRegressor:
-    def __init__(self, max_depth=10, min_samples=2):
+    def __init__(self, max_depth=10, min_samples_split=2):
         self.max_depth = max_depth
-        self.min_samples = min_samples
+        self.min_samples_split = min_samples_split
         self.tree = None
+        self.losses = []
 
     def train(self, X, y):
+        X = np.array(X)
+        y = np.array(y)
         self.tree = self._build_tree(X, y)
 
     def predict(self, X):
+        X = np.array(X)
         return np.array([self._traverse_tree(x, self.tree) for x in X])
+
+    def evaluate(self, X, y):
+        y_pred = self.predict(X)
+        mse = self._calculate_mse(y, y_pred)
+        print(f"Mean Squared Error: {mse:.4f}")
+        return mse
     
     def _build_tree(self, X, y, depth=0):
         n_samples, n_features = X.shape
+
+        # Compute and store training loss
+        if depth == 0:
+            mse = self._calculate_mse(y)
+            self.losses.append(mse)
+            print(f"Depth: {depth}, Loss: {mse:.4f}")
+            
+
         if depth >= self.max_depth or n_samples < self.min_samples_split:
             return {"value": np.mean(y)}
      
@@ -185,15 +203,15 @@ class DecisionTreeRegressor:
         if len(y[left_indices]) == 0 or len(y[right_indices]) == 0:
             return float("inf")
 
-        left_mse = self.calculate_mse(y[left_indices])
-        right_mse = self.calculate_mse(y[right_indices])
+        left_mse = self._calculate_mse(y[left_indices])
+        right_mse = self._calculate_mse(y[right_indices])
 
         return (left_mse * len(y[left_indices]) + right_mse * len(y[right_indices])) / len(y)
 
-    def _calculate_mse(self, y):
-        if len(y) == 0:
-            return 0
-        return np.mean((y - np.mean(y)) ** 2)
+    def _calculate_mse(self, y, y_pred=None):
+        if y_pred is None:
+            y_pred = np.mean(y)
+        return np.mean((y - y_pred) ** 2)
 
     def _traverse_tree(self, sample, node):
         if "value" in node:
@@ -206,5 +224,24 @@ class DecisionTreeRegressor:
 #+end_src
 
 #+RESULTS: model
+
+Test the model
+#+name: test
+#+begin_src python :python python3 :results output
+<<model>>
+# Initialize the model
+decision_tree_reg = DecisionTreeRegressor(max_depth=10, min_samples_split=2)
+
+# Train the model
+decision_tree_reg.train(X_train, y_train)
+
+# Evaluate the model
+mse = decision_tree_reg.evaluate(X_test, y_test)
+#+end_src
+
+#+RESULTS: test
+: Depth: 0, Loss: 115.1837
+: Mean Squared Error: 0.3533
+
 
 ** C Code
